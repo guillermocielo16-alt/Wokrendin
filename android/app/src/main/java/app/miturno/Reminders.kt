@@ -11,9 +11,13 @@ object Reminders {
             .createNotificationChannel(
                 NotificationChannel(
                     "turnos",
-                    "Turnos y recordatorios",
+                    "Recordatorios de turno",
                     NotificationManager.IMPORTANCE_DEFAULT,
-                )
+                ).apply {
+                    description = "Aviso del próximo turno laboral; sonido y vibración ajustables en Android."
+                    enableVibration(true)
+                    lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+                }
             )
     }
 
@@ -37,7 +41,7 @@ object Reminders {
         am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.toInstant().toEpochMilli(), pi)
     }
 
-    fun notify(c: Context, preview: Boolean = false) {
+    fun notify(c: Context, preview: Boolean = false): Boolean {
         channel(c)
         val s = Store(c)
         val d = LocalDate.now().plusDays(if (preview) 0 else 1)
@@ -63,7 +67,10 @@ object Reminders {
             PendingIntent.getActivity(
                 c,
                 0,
-                Intent(c, MainActivity::class.java),
+                Intent(c, MainActivity::class.java).apply {
+                    putExtra("openDate", d.toString())
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                },
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         val body =
@@ -75,14 +82,24 @@ object Reminders {
                 .setContentText(body)
                 .setStyle(Notification.BigTextStyle().bigText(body))
                 .setContentIntent(pending)
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setShowWhen(true)
                 .setAutoCancel(true)
                 .build()
         if (
-            Build.VERSION.SDK_INT < 33 ||
-                c.checkSelfPermission("android.permission.POST_NOTIFICATIONS") ==
-                    android.content.pm.PackageManager.PERMISSION_GRANTED
-        )
-            c.getSystemService(NotificationManager::class.java).notify(1, n)
+            Build.VERSION.SDK_INT >= 33 &&
+            c.checkSelfPermission("android.permission.POST_NOTIFICATIONS") !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) return false
+        val manager = c.getSystemService(NotificationManager::class.java)
+        if (!manager.areNotificationsEnabled() ||
+            manager.getNotificationChannel("turnos")?.importance == NotificationManager.IMPORTANCE_NONE)
+            return false
+        return try {
+            manager.notify(1, n)
+            true
+        } catch (_: SecurityException) { false }
     }
 }
 
