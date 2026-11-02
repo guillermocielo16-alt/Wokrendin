@@ -489,8 +489,8 @@ class MainActivity : Activity() {
             picker.addView(b, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(4) })
         }
         if (second || resources.configuration.screenWidthDp < 400) add(body, picker)
-        calendarSyncControls()
         if (!second) hero(selected, selected == LocalDate.now())
+        calendarSyncControls()
         if (!second) strip()
         if (!second) lookup()
         if (!second) manage()
