@@ -251,9 +251,28 @@ class MainActivity : Activity() {
             reportStart = it.getString("rangeStart", "")
             reportEnd = it.getString("rangeEnd", "")
         }
+        intent?.getStringExtra("openDate")?.let { openDateFromNotification(it) }
         Reminders.channel(this)
         Reminders.schedule(this)
         render()
+    }
+
+    private fun openDateFromNotification(raw: String) {
+        runCatching { LocalDate.parse(raw) }.getOrNull()?.let { date ->
+            page = "calendar"
+            hasSelection = true
+            selected = date
+            month = date.withDayOfMonth(1)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.getStringExtra("openDate")?.let {
+            openDateFromNotification(it)
+            render()
+        }
     }
 
     override fun onSaveInstanceState(out: Bundle) {
@@ -1468,8 +1487,10 @@ else->"Guardia cancelada"}}",
                 )
                     toast("Activa primero el permiso de notificaciones")
                 else {
-                    Reminders.notify(this, true)
-                    toast("Notificación de prueba enviada")
+                    if (Reminders.notify(this, true))
+                        toast("Notificación de prueba enviada")
+                    else
+                        toast("Notificación bloqueada. Revisa los ajustes del sistema")
                 }
             },
         )
