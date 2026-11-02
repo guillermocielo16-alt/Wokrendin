@@ -9,7 +9,7 @@ Fecha de respaldo: 2 de noviembre de 2026 (México).
 - Proyecto Android Studio: carpeta `android/`.
 - Base funcional: Mi Turno Android nativo 1.0.0, paquete `app.miturno`, versionCode 1.
 - La rama web `main` permanece en `1fe8cdb5ff5a14ad8479ab217842e50e529c1055` al crear este respaldo. Los ocho archivos web se heredan sin cambios. No fusionar esta rama a main para publicar Android.
-- Esta operación respalda y documenta; no modifica reglas de negocio, no genera un APK nuevo y no integra funcionalidades nuevas.
+- El respaldo inicial no modificó reglas de negocio. El 2 de noviembre se integró la lectura del calendario Android en los fuentes, sin alterar las reglas de turnos. Aún no se generó una APK nueva.
 
 ## Fuentes y autenticidad
 
@@ -39,7 +39,7 @@ Durante este respaldo se verificaron integridad de los 13 archivos de ejecución
 
 ## Lectura del calendario del teléfono: integración de fuentes en desarrollo
 
-`proposals/android-calendar-readonly/` conserva el paquete `mi-turno-android-recordatorios-modulo-kotlin.zip` sin integrarlo en `app`. Su documento de integración es la especificación funcional y su resultado registra 15 pruebas JVM históricas del modelo. El lector CalendarContract ya está integrado en la aplicación fuente y requiere compilación y validación real en Android.
+`proposals/android-calendar-readonly/` conserva el módulo original de referencia; una copia adaptada al paquete `app.miturno` ya está integrada en `android/app/src/main/`. Su documento de integración es la especificación funcional y su resultado registra 15 pruebas JVM históricas del modelo. El lector CalendarContract ya está integrado en la aplicación fuente y requiere compilación y validación real en Android.
 
 Objetivo acordado: sincronización manual y unidireccional Android → Mi Turno, permiso READ_CALENDAR, selección de calendarios, foquito en leyenda/mes/tira, fecha seleccionada única, detalles completos debajo del resultado laboral. Eventos externos solo en memoria de la sesión, sin exportarlos a copias, logs o repositorio. Sin WRITE_CALENDAR, OAuth ni servicios pagados. No confundir esos eventos con la notificación diaria ya existente.
 
@@ -47,7 +47,7 @@ El texto del paquete que indica que aún no se disponía de los fuentes es hist�
 
 ## Siguiente trabajo
 
-1. Partir de esta rama y registrar el commit base antes de editar.
+1. Utilizar el commit base `8621e862933350fe752802e6f39e3884c6d0426b` como punto seguro para comparar futuras modificaciones.
 2. Aplicar los ajustes que indique el usuario, preservando paquete, firma, datos y reglas.
 3. Si se integra el módulo, seguir `proposals/android-calendar-readonly/INTEGRACION_Y_RESTRICCIONES.md` y verificar permisos, eventos repetidos, medianoche, selección compartida y revocación.
 4. Ejecutar pruebas y compilar localmente; no GitHub Actions ni despliegues Netlify.
