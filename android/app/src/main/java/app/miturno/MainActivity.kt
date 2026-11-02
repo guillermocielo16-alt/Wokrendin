@@ -1,6 +1,9 @@
 package app.miturno
 
 import android.app.*
+import android.Manifest
+import android.content.pm.PackageManager
+import android.provider.Settings
 import android.content.*
 import android.graphics.*
 import android.graphics.drawable.*
@@ -11,6 +14,7 @@ import android.widget.*
 import java.time.*
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.Executors
 import org.json.JSONObject
 
 class MainActivity : Activity() {
@@ -42,6 +46,20 @@ class MainActivity : Activity() {
                 clock.postDelayed(this, 60000)
             }
         }
+    // Device events are never exported or written to the work calendar.
+    private val deviceCalendar by lazy { AndroidCalendarReader(this) }
+    private val deviceCalendarWorker = Executors.newSingleThreadExecutor()
+    private val deviceCalendarUi = Handler(Looper.getMainLooper())
+    private var deviceCalendarEvents: Map<LocalDate, List<DeviceCalendarEvent>> = emptyMap()
+    private var deviceCalendarStatus = "Sin sincronizar"
+    private var deviceCalendarSynced = false
+    private var deviceCalendarRequest = 0
+    private val sourcesPrefs by lazy { getSharedPreferences("mi_turno_calendar_sources", MODE_PRIVATE) }
+
+    private fun chosenCalendarIds(): Set<Long> =
+        sourcesPrefs.getString("selected_ids", "").orEmpty().split(",")
+            .mapNotNull { it.toLongOrNull() }.toSet()
+
     private val es = Locale.forLanguageTag("es-MX")
     private val titleFont by lazy { Typeface.createFromAsset(assets, "fonts/sora.ttf") }
     private val mainFont by lazy { Typeface.createFromAsset(assets, "fonts/inter.ttf") }
@@ -436,7 +454,7 @@ class MainActivity : Activity() {
     private fun calendar() {
         header(
             if (second) "Rotación 2026 · Equipos C/D" else "Mi Turno",
-            if (second) "CALENDARIO DE TRABAJO" else "CICLO 28 DÍAS · ${LocalDate.now().year}",
+            if (second) "CALENDARIO DE TRABAJO · ${format(selected)}" else "CICLO 28 DÍAS · ${format(selected)}",
         )
         if (second) add(body, text("Esquema 2-2-3 · viernes a domingo agrupados", 12, dim))
         val picker = row()
@@ -452,7 +470,8 @@ class MainActivity : Activity() {
             picker.addView(b, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(4) })
         }
         if (second || resources.configuration.screenWidthDp < 400) add(body, picker)
-        if (!second) hero(LocalDate.now(), true)
+        calendarSyncControls()
+        if (!second) hero(selected, selected == LocalDate.now())
         if (!second) strip()
         if (!second) lookup()
         if (!second) manage()
@@ -577,16 +596,24 @@ class MainActivity : Activity() {
     private fun strip() {
         val h = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
         val r = row()
+        val today = LocalDate.now()
+        val start = if (selected.isBefore(today) || selected.isAfter(today.plusDays(29)))
+            selected.minusDays(3) else today
         for (i in 0L..29) {
-            val d = LocalDate.now().plusDays(i)
+            val d = start.plusDays(i)
             val t = type(d)
             val c = accent(t)
             val col = vertical()
             col.gravity = Gravity.CENTER
             col.setPadding(dp(8), dp(9), dp(8), dp(9))
-            col.background = shape(soft(t), tint(c, 90), 12)
+            col.background = shape(soft(t), if (d == selected) ink else tint(c, 90), 12)
             col.addView(text(d.format(DateTimeFormatter.ofPattern("EEE", es)), 10, dim, monoFont))
             col.addView(text("${d.dayOfMonth}", 23, c, monoFont))
+            if (deviceCalendarEvents[d]?.isNotEmpty() == true) {
+                col.addView(reminderBulb(13).apply {
+                    contentDescription = "Recordatorios en ${d}"
+                })
+            }
             col.addView(
                 text(
                     when (t) {
@@ -606,6 +633,134 @@ class MainActivity : Activity() {
         }
         h.addView(r)
         add(body, h)
+    }
+
+
+    private fun reminderBulb(size: Int) = ImageView(this).apply {
+        setImageResource(R.drawable.ic_reminder_bulb)
+        val px = dp(size)
+        layoutParams = LinearLayout.LayoutParams(px, px)
+        contentDescription = "Recordatorios"
+    }
+
+    private fun calendarSyncControls() {
+        val controls = card()
+        val r = row()
+        val label = text("Calendario Android", 13, ink, titleFont)
+        r.addView(label, LinearLayout.LayoutParams(0, -2, 1f))
+        r.addView(reminderBulb(16))
+        add(controls, r)
+        add(controls, text(deviceCalendarStatus, 11, dim))
+        add(controls, button("Sincronizar calendario", gold) {
+            if (!deviceCalendar.hasPermission())
+                requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), 101)
+            else chooseDeviceCalendars()
+        })
+    }
+
+    // The calendar provider can block; never query it on the UI thread.
+    private fun chooseDeviceCalendars() {
+        if (!deviceCalendar.hasPermission()) return
+        deviceCalendarWorker.execute {
+            try {
+                val choices = deviceCalendar.availableCalendars()
+                deviceCalendarUi.post {
+                    if (isFinishing || isDestroyed || !deviceCalendar.hasPermission()) return@post
+                    if (choices.isEmpty()) {
+                        toast("No hay calendarios visibles en Android")
+                        return@post
+                    }
+                    val names = choices.map { it.displayName }.toTypedArray()
+                    val chosen = chosenCalendarIds().toMutableSet()
+                    val checked = BooleanArray(choices.size) { choices[it].id in chosen }
+                    AlertDialog.Builder(this)
+                        .setTitle("Elegir calendarios para leer")
+                        .setMultiChoiceItems(names, checked) { _, index, on ->
+                            if (on) chosen.add(choices[index].id) else chosen.remove(choices[index].id)
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Sincronizar") { _, _ ->
+                            if (chosen.isEmpty()) {
+                                toast("Selecciona al menos un calendario")
+                            } else {
+                                // Only calendar IDs are persisted, outside the app's JSON backups.
+                                sourcesPrefs.edit().putString("selected_ids", chosen.sorted().joinToString(",")).apply()
+                                syncDeviceCalendars(chosen)
+                            }
+                        }
+                        .show()
+                }
+            } catch (_: Exception) {
+                deviceCalendarUi.post { toast("No se pudieron consultar los calendarios del dispositivo") }
+            }
+        }
+    }
+
+    private fun syncDeviceCalendars(ids: Set<Long>) {
+        val requestId = ++deviceCalendarRequest
+        val today = LocalDate.now()
+        val periods = listOf(
+            month to month.plusMonths(1).minusDays(1),
+            today to today.plusDays(29),
+            selected to selected,
+        )
+        deviceCalendarStatus = "Sincronizando…"
+        render()
+        deviceCalendarWorker.execute {
+            try {
+                val index = linkedMapOf<LocalDate, MutableList<DeviceCalendarEvent>>()
+                for ((from, through) in periods) {
+                    val events = deviceCalendar.readVisibleEvents(from, through, ids)
+                    for ((date, items) in ReminderDayIndex.build(events, from, through)) {
+                        index.getOrPut(date) { mutableListOf() }.addAll(items)
+                    }
+                }
+                val ready = index.mapValues { (_, items) ->
+                    items.distinctBy { it.occurrenceKey }.sortedBy { it.startMillis }
+                }
+                deviceCalendarUi.post {
+                    if (requestId != deviceCalendarRequest || isFinishing || isDestroyed) return@post
+                    if (!deviceCalendar.hasPermission()) {
+                        deviceCalendarEvents = emptyMap()
+                        deviceCalendarSynced = false
+                        deviceCalendarStatus = "Permiso de calendario revocado"
+                    } else {
+                        deviceCalendarEvents = ready
+                        deviceCalendarSynced = true
+                        deviceCalendarStatus = "Sincronización completada · ${ready.values.sumOf { it.size }} recordatorios por fecha"
+                    }
+                    render()
+                }
+            } catch (_: Exception) {
+                deviceCalendarUi.post {
+                    if (requestId == deviceCalendarRequest && !isFinishing && !isDestroyed) {
+                        deviceCalendarStatus = "No se pudo sincronizar. Se conservan los resultados anteriores."
+                        render()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showDeviceReminders(panel: LinearLayout, date: LocalDate) {
+        val events = deviceCalendarEvents[date].orEmpty()
+        if (events.isEmpty()) return
+        heading(panel, if (events.size == 1) "Tienes un recordatorio" else "Tienes ${events.size} recordatorios")
+        for (event in events) {
+            val zone = if (event.allDay) ZoneOffset.UTC else ZoneId.systemDefault()
+            val from = Instant.ofEpochMilli(event.startMillis).atZone(zone)
+            val to = Instant.ofEpochMilli(event.endMillisExclusive).atZone(zone)
+            val period = if (event.allDay) {
+                "Todo el día · ${from.toLocalDate()}" +
+                    (if (to.toLocalDate().isAfter(from.toLocalDate().plusDays(1)))
+                        " al ${to.toLocalDate().minusDays(1)}" else "")
+            } else "${from.toLocalDate()} ${from.toLocalTime()} — ${to.toLocalDate()} ${to.toLocalTime()}"
+            add(panel, text("💡 ${event.title}", 14, ink, titleFont))
+            add(panel, text(period, 12, dim))
+            event.location?.takeIf { it.isNotBlank() }?.let { add(panel, text("Lugar: $it", 12, dim)) }
+            event.description?.takeIf { it.isNotBlank() }?.let { add(panel, text(it, 12, ink)) }
+            event.calendarName?.let { add(panel, text("Calendario: $it", 10, dim)) }
+        }
     }
 
     private fun selectDate(d: LocalDate) {
@@ -633,6 +788,7 @@ class MainActivity : Activity() {
         add(p, text(CalendarRules.label(t), 22, accent(t), titleFont))
         add(p, text(hours(selected), 14, accent(t), monoFont))
         if (CalendarRules.holiday(selected)) add(p, text("🎺 Día festivo", 12, accent("festivo")))
+        showDeviceReminders(p, selected)
         if (second) {
             if (CalendarRules.change223(selected))
                 add(p, text("⇄ Cambio de turno", 12, accent("cambio")))
@@ -759,6 +915,10 @@ class MainActivity : Activity() {
             add(p, legend)
             add(p, text("🎺 Festivo  ·  🌴 Vacaciones  ·  ◉ Hoy", 11, dim))
         }
+        val remindersLegend = row()
+        remindersLegend.addView(reminderBulb(15))
+        add(remindersLegend, text("Recordatorios", 11, dim))
+        add(p, remindersLegend)
         toggle(p, "⭐ Resaltar descansos compartidos con C/D", "stars")
         toggle(p, "🛡 Resaltar guardia de A en descanso C/D", "guardsVisible")
     }
@@ -887,6 +1047,17 @@ else->"Disponible"}else""}",
                 if (second && CalendarRules.change223(d)) marks += "↻"
                 p.textSize = dp(8).toFloat()
                 canvas.drawText(marks, x + cw / 2, y + dp(13), p)
+                if (deviceCalendarEvents[d]?.isNotEmpty() == true) {
+                    val bulb = resources.getDrawable(R.drawable.ic_reminder_bulb, theme)
+                    val size = dp(13)
+                    bulb.setBounds(
+                        (x + cw - size - dp(5)).toInt(),
+                        (y + ch - size - dp(4)).toInt(),
+                        (x + cw - dp(5)).toInt(),
+                        (y + ch - dp(4)).toInt()
+                    )
+                    bulb.draw(canvas)
+                }
             }
         }
 
@@ -1302,6 +1473,12 @@ else->"Guardia cancelada"}}",
                 }
             },
         )
+        add(reminders, button("⚙ Ajustar sonido y vibración en Android", gold) {
+            val intent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                .putExtra(Settings.EXTRA_CHANNEL_ID, "turnos")
+            try { startActivity(intent) } catch (_: Exception) { toast("Abre las notificaciones desde Ajustes de Android") }
+        })
         val backup = card()
         heading(backup, "Copia de seguridad")
         add(
@@ -1400,6 +1577,19 @@ else->"Guardia cancelada"}}",
         results: IntArray,
     ) {
         super.onRequestPermissionsResult(code, permissions, results)
+        if (code == 101) {
+            if (results.isNotEmpty() && results[0] == PackageManager.PERMISSION_GRANTED)
+                chooseDeviceCalendars()
+            else {
+                deviceCalendarRequest++
+                deviceCalendarEvents = emptyMap()
+                deviceCalendarSynced = false
+                deviceCalendarStatus = "Permiso no concedido"
+                toast("El calendario laboral sigue funcionando sin este permiso")
+                render()
+            }
+            return
+        }
         if (code == 100) {
             if (
                 results.isNotEmpty() &&
@@ -1497,6 +1687,13 @@ else->"Guardia cancelada"}}",
     override fun onResume() {
         super.onResume()
         if (::s.isInitialized) {
+            if (deviceCalendarSynced && !deviceCalendar.hasPermission()) {
+                deviceCalendarRequest++
+                deviceCalendarEvents = emptyMap()
+                deviceCalendarSynced = false
+                deviceCalendarStatus = "Permiso de calendario revocado"
+                render()
+            }
             Reminders.schedule(this)
             if (page == "calendar" && renderedToday != LocalDate.now()) {
                 renderedToday = LocalDate.now()
@@ -1505,6 +1702,12 @@ else->"Guardia cancelada"}}",
         }
         clock.removeCallbacks(refreshClock)
         clock.postDelayed(refreshClock, 60000)
+    }
+
+    override fun onDestroy() {
+        deviceCalendarRequest++
+        deviceCalendarWorker.shutdownNow()
+        super.onDestroy()
     }
 
     override fun onPause() {
