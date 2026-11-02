@@ -1,0 +1,24 @@
+{
+  "source_archive": "Mi-Turno-Android-1.0.0-Fuentes.zip",
+  "source_archive_sha256": "8ea72f1d14a1e1da4fb0501ffeb0bd4cdfa5fca3d77a07af631470f81a226e14",
+  "base_apk_sha256": "0af7e233008bd56f0fd8e3ddcb685439d5526df13dd7c0bd2e96d9e7117ebe95",
+  "web_base_commit": "1fe8cdb5ff5a14ad8479ab217842e50e529c1055",
+  "module_archive": "mi-turno-android-recordatorios-modulo-kotlin.zip",
+  "module_archive_sha256": "28c7911a0f0df118da292abdff29ac962b907fd246ce211edea9e6b4f93bd6f4",
+  "module_status": "prepared_not_integrated",
+  "runtime_files_sha256": {
+    "app/src/main/AndroidManifest.xml": "f7676ae42f0357fbd9cfeb4531fa0b145f3fe1340deb4d5449041ab50fb9168f",
+    "app/src/main/assets/fonts/inter.ttf": "1b08e7fc267a5c7e1d614100f604b83e7e8a0be241f0f288faa2b3ac93a683ba",
+    "app/src/main/assets/fonts/mono.ttf": "3386a05f6ece969e4537de6be894170d20558e82f7d56c8c5d332972ef172160",
+    "app/src/main/assets/fonts/sora.ttf": "a50f5d254fc0fb83125fceffb72a95d036b8ce964a77fb8cc42ecb9ce16b0427",
+    "app/src/main/assets/licenses/Inter-OFL.txt": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+    "app/src/main/assets/licenses/JetBrainsMono-OFL.txt": "b2fe5e8987594e9ffd1d2ca52a2f5d73eb8335243893c5d6254b5ad69269591d",
+    "app/src/main/assets/licenses/Kotlin-LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "app/src/main/assets/licenses/Sora-OFL.txt": "ba0b9729c9428ba79a0459ab8ec575791b51509dbec213e383d0316d37fec299",
+    "app/src/main/java/app/miturno/CalendarRules.kt": "3e99d476cc4e4f7371a24eeaed220aba72d178833d675f1b0f02b5ee5e2bb049",
+    "app/src/main/java/app/miturno/MainActivity.kt": "1c6fd685248237d3c2782241b62ec8358108f526d6223133040f736ab6efc4a8",
+    "app/src/main/java/app/miturno/Reminders.kt": "4f508c7ce9a27cd89a1a45f7e89342bf9e19102a5702a24308f6595bbb03b510",
+    "app/src/main/java/app/miturno/Store.kt": "a3b2710635cb831bb703d008b094e437def0cb51067d4f737c2fc13a8d87d0b8",
+    "app/src/main/res/drawable/app_icon.png": "9c7a322eebe9df619dc3edb8f14a3470b3c0a806d7f7d031fbcd60e3fc281941"
+  }
+}

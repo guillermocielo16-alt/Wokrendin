@@ -1,0 +1,18 @@
+PASS: Timed event marks its precise day
+PASS: Full event details retained
+PASS: Bulb appears on date with event
+PASS: No event note for other day
+PASS: Horizontal selection updates all three date surfaces
+PASS: Selected-day detail updated from shared state
+PASS: Selecting month day clears unrelated event and updates top header
+PASS: Monthly selection re-opens the event
+PASS: All-day multi-day event uses UTC dates, respects exclusive end
+PASS: End at midnight does not mark next day
+PASS: Overnight event marks both days
+PASS: Recurring instances remain on separate dates
+PASS: Duplicate instances are not displayed twice
+PASS: Revoked calendar permission hides imported information
+PASS: Permission change preserves currently selected day
+All 15 domain/navigation checks passed
+
+Entorno: kotlinc JVM 1.9 / Java 21. AndroidCalendarReader requiere SDK Android y proyecto nativo.
