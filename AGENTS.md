@@ -19,7 +19,7 @@ Preservar package `app.miturno`, firma y datos. Para actualizaciones, recuperar 
 
 ## Módulo preparado
 
-`proposals/android-calendar-readonly/` NO está integrado en la aplicación. Leer su especificación antes de usarlo. Solo READ_CALENDAR; nunca WRITE_CALENDAR, OAuth ni servicios pagados. Eventos externos en memoria de sesión, excluidos de backups, logs y repositorios. La integración debe mantener intactos los cálculos laborales y el diseño.
+`proposals/android-calendar-readonly/` conserva una propuesta histórica. La integración real de solo lectura está en `android/app/src/main/java/app/miturno/`. Leer su especificación antes de usarlo. Solo READ_CALENDAR; nunca WRITE_CALENDAR, OAuth ni servicios pagados. Eventos externos en memoria de sesión, excluidos de backups, logs y repositorios. La integración debe mantener intactos los cálculos laborales y el diseño.
 
 ## Entrega de ajustes
 
