@@ -1,6 +1,19 @@
 # Mi Turno Android — estado y próxima versión
 
-## 2026-11-03 — Menú lateral restaurado (fuentes para APK 1.1.2, SIN COMPILAR)
+## 2026-11-03 — APK 1.1.2 compilada: panel lateral restaurado
+
+Compilación local desde la rama `android/kotlin`, commit fuente `6ce6872ce79213cbc2d1d8b43388887ea4b087b2`. Esta versión incorpora el panel lateral nativo sobre el calendario, navegación interna, contenido de Horas Extra y ajustes, gestos Atrás/cierre, colores por calendario, oscurecimiento y blur de fondo en Android 12+. En Android 8–11 conserva el oscurecimiento sin blur.
+
+- APK: `Mi-Turno-Android-1.1.2.apk`, paquete `app.miturno`, versionCode 4, minSdk 26 (Android 8).
+- SHA-256 APK: `80e1adddd81b09320459e29ef960554909f7e466aabcbcb0cb67102a79261d04`.
+- Certificado SHA-256: `41f530f81876173802f2156e29e105b9714c2ba9ef635a2195166b570800d8bc`, igual a 1.1.1; firma v2/v3 y alineación verificadas.
+- Pruebas locales aprobadas: 23,013 comparaciones de reglas (2,557 fechas) + 2 de horas extra; 15 de eventos/selección; 25 de almacenamiento, horas extra y reportes.
+- `CalendarRules.kt` mantiene blob Git `75a84b35096aad361116c92de145c7bf5bcb40e6`; `Store.kt` mantiene `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`.
+- Pendiente prueba en teléfono de blur, navegación Atrás, gestos, accesibilidad táctil, temas, uso de batería y actualización conservando datos. La compilación no equivale a validación física. El APK no se subió al repositorio público. Sin GitHub Actions ni Netlify.
+
+---
+
+## 2026-11-03 — Menú lateral restaurado (implementación 1.1.2; compilación registrada arriba)
 
 Se compararon cuatro capturas de referencia (panel WebView Horas Extra y Ajustes Cal 2, frente al cuadro gris de selección nativa) con el código Kotlin. La causa fue que el botón ☰ invocaba `AlertDialog.Builder(...).setItems(...)` y sustituía el calendario por páginas completas.
 
@@ -12,7 +25,7 @@ Se compararon cuatro capturas de referencia (panel WebView Horas Extra y Ajustes
 
 **Integridad:** `CalendarRules.kt` Git SHA `75a84b35096aad361116c92de145c7bf5bcb40e6` y `Store.kt` `adfe8a20c7a30def35c7bf7e5c1eebc92176985a` permanecen exactamente iguales al punto seguro. Paquete `app.miturno`, lectura de calendario Android, notificaciones y firmas sin cambios. Se reservó `versionCode 4` / `versionName 1.1.2`.
 
-**Verificación realizada:** inspección de cambios, presencia de panel en lugar de `AlertDialog.setItems`, revisión estructural del Kotlin, comparación de hashes de reglas y datos. **No se ha compilado ni instalado la 1.1.2**, ni se ha probado el desenfoque y gesto en dispositivo. El SDK Android y la clave privada no están disponibles en este entorno. Para probar y compilar localmente utilizar `android/tests/VERIFICACION_MENU_LATERAL_1.1.2.md`; no usar GitHub Actions ni Netlify.
+**Verificación de compilación:** APK 1.1.2 construida con Kotlin 2.0.21, Android SDK 35 y firma de prueba original. Alineación y firmas v2/v3 verificadas; coincide el certificado con la APK 1.1.1. Pasaron las 23,013 comparaciones de reglas y 2 de horas extra, las 15 comprobaciones de eventos/selección, y las 25 aserciones de almacenamiento/reportes. Los blobs de `CalendarRules.kt` y `Store.kt` siguen iguales. La inspección física del panel, blur y gestos en el teléfono aún está pendiente. La lista detallada está en `android/tests/VERIFICACION_MENU_LATERAL_1.1.2.md`. Sin GitHub Actions ni Netlify.
 
 
 
