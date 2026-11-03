@@ -10,6 +10,11 @@ import android.graphics.drawable.*
 import android.os.*
 import android.view.*
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
+import kotlin.math.abs
+import kotlin.math.min
 import android.widget.*
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -22,6 +27,18 @@ class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private lateinit var body: LinearLayout
     private lateinit var scroll: ScrollView
+    private lateinit var drawerHost: FrameLayout
+    private var drawerOverlay: FrameLayout? = null
+    private var drawerPanel: View? = null
+    private var drawerScrim: View? = null
+    private var drawerScroll: ScrollView? = null
+    private var drawerScreen: String? = null
+    private var drawingInDrawer = false
+    private var drawerScrollOffset = 0
+    private var drawerInsetTop = 0
+    private var drawerInsetBottom = 0
+    private var drawerRemindersAnchor: View? = null
+    private var platformDrawerBack: OnBackInvokedCallback? = null
     private var second = false
     private var team = "A"
     private var group = "CD"
@@ -276,6 +293,13 @@ class MainActivity : Activity() {
             hasSelection = it.getBoolean("hasSelection")
             month = LocalDate.parse(it.getString("month"))
             page = it.getString("page", "calendar")
+            drawerScreen = it.getString("drawerScreen")
+            // Older versions stored these sections as fullscreen pages.
+            if (page in listOf("extras", "settings", "holidays")) {
+                drawerScreen = page
+                page = "calendar"
+            }
+            drawerScrollOffset = it.getInt("drawerScrollOffset", 0)
             exportText = it.getString("export", "")
             reportStart = it.getString("rangeStart", "")
             reportEnd = it.getString("rangeEnd", "")
@@ -309,6 +333,8 @@ class MainActivity : Activity() {
         out.putBoolean("hasSelection", hasSelection)
         out.putString("month", month.toString())
         out.putString("page", page)
+        out.putString("drawerScreen", drawerScreen)
+        out.putInt("drawerScrollOffset", drawerScroll?.scrollY ?: drawerScrollOffset)
         out.putString("export", exportText)
         out.putString("rangeStart", reportStart)
         out.putString("rangeEnd", reportEnd)
@@ -324,6 +350,11 @@ class MainActivity : Activity() {
 
     private fun render(animate: Boolean = false) {
         val oldScroll = if (::scroll.isInitialized && !animate) scroll.scrollY else 0
+        val drawerPosition = drawerScroll?.scrollY ?: drawerScrollOffset
+        drawerOverlay = null
+        drawerPanel = null
+        drawerScrim = null
+        drawerScroll = null
         setTheme(
             if (dark) android.R.style.Theme_Material_NoActionBar
             else android.R.style.Theme_Material_Light_NoActionBar
@@ -345,17 +376,22 @@ class MainActivity : Activity() {
         window.decorView.systemUiVisibility =
             if (dark) 0
             else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        root.setOnApplyWindowInsetsListener { v, i ->
-            v.setPadding(
-                i.systemWindowInsetLeft,
-                i.systemWindowInsetTop,
-                i.systemWindowInsetRight,
-                i.systemWindowInsetBottom,
+        drawerHost = FrameLayout(this)
+        drawerHost.addView(root, FrameLayout.LayoutParams(-1, -1))
+        drawerHost.setOnApplyWindowInsetsListener { _, insets ->
+            drawerInsetTop = insets.systemWindowInsetTop
+            drawerInsetBottom = insets.systemWindowInsetBottom
+            root.setPadding(
+                insets.systemWindowInsetLeft,
+                drawerInsetTop,
+                insets.systemWindowInsetRight,
+                drawerInsetBottom,
             )
-            i.consumeSystemWindowInsets()
+            drawerOverlay?.setPadding(0, drawerInsetTop, 0, drawerInsetBottom)
+            insets
         }
-        setContentView(root)
-        root.requestApplyInsets()
+        setContentView(drawerHost)
+        drawerHost.requestApplyInsets()
         scroll =
             ScrollView(this).apply {
                 isFillViewport = true
@@ -425,6 +461,8 @@ class MainActivity : Activity() {
         bottom.addView(themeButton, LinearLayout.LayoutParams(dp(47), dp(47)))
         root.addView(bottom)
         scroll.post { scroll.scrollTo(0, oldScroll) }
+        if (drawerScreen != null) mountDrawer(animated = false, scrollTo = drawerPosition)
+        else updateDrawerBackCallback(false)
         if (animate) {
             body.alpha = 0f
             body.translationY = dp(7).toFloat()
@@ -438,43 +476,294 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun menu() {
-        AlertDialog.Builder(this)
-            .setTitle("Mi Turno")
-            .setItems(
-                arrayOf(
-                    "Calendarios",
-                    "⏱ Horas extra y reportes",
-                    "👥 Equipos y ajustes",
-                    "🎺 Días festivos",
-                    "🔔 Recordatorios",
-                )
-            ) { _, i ->
-                page =
-                    when (i) {
-                        1 -> "extras"
-                        2,
-                        4 -> "settings"
-                        3 -> "holidays"
-                        else -> "calendar"
+    private fun menu() = openDrawer("menu")
+
+    /** Theme-aware hamburger: green for the 28-day calendar, mauve for 2-2-3. */
+    private fun drawerAccent(): Int = if (second) {
+        color(if (dark) "#C98FB0" else "#A56886")
+    } else color(if (dark) "#24B07B" else "#208A65")
+
+    private fun drawerToggle() = TextView(this).apply {
+        text = "☰"
+        gravity = Gravity.CENTER
+        textSize = 24f
+        typeface = mainFont
+        setTextColor(drawerAccent())
+        background = RippleDrawable(
+            android.content.res.ColorStateList.valueOf(tint(drawerAccent(), 55)),
+            shape(if (dark) color(if (second) "#221923" else "#151B1A") else panel,
+                tint(drawerAccent(), 80), 13),
+            null,
+        )
+        isClickable = true
+        isFocusable = true
+        contentDescription = "Abrir menú lateral"
+        setOnClickListener { openDrawer("menu") }
+    }
+
+    /**
+     * Keeps drawer navigation independent of the work calendar.
+     * Back from a section returns to the drawer list; back from the list closes it.
+     */
+    private fun openDrawer(destination: String) {
+        require(destination in setOf("menu", "extras", "settings", "holidays", "reminders"))
+        val wasClosed = drawerScreen == null
+        drawerScreen = destination
+        drawerScrollOffset = 0
+        mountDrawer(animated = wasClosed, scrollTo = 0)
+    }
+
+    private fun drawerBack() {
+        if (drawerScreen == null) return
+        if (drawerScreen == "menu") closeDrawer()
+        else openDrawer("menu")
+    }
+
+    private fun updateDrawerBackCallback(enable: Boolean) {
+        if (Build.VERSION.SDK_INT < 33) return
+        if (enable && platformDrawerBack == null) {
+            val callback = OnBackInvokedCallback { drawerBack() }
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_OVERLAY, callback
+            )
+            platformDrawerBack = callback
+        } else if (!enable) {
+            platformDrawerBack?.let { onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
+            platformDrawerBack = null
+        }
+    }
+
+    private fun blurCalendarForDrawer(blur: Boolean) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            root.setRenderEffect(
+                if (blur) RenderEffect.createBlurEffect(
+                    dp(3).toFloat(), dp(3).toFloat(), Shader.TileMode.CLAMP,
+                ) else null
+            )
+        }
+    }
+
+    /** Native left-edge drawer; swipe left or tap the scrim to dismiss. */
+    private inner class DrawerGestureFrame(context: Context) : FrameLayout(context) {
+        private var startX = 0f
+        private var startY = 0f
+        private var swiping = false
+
+        override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    startX = event.x
+                    startY = event.y
+                    swiping = false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.x - startX
+                    val dy = event.y - startY
+                    if (dx < -dp(44) && abs(dx) > 1.35f * abs(dy)) {
+                        swiping = true
+                        return true
                     }
-                render(true)
+                }
             }
-            .show()
+            return super.onInterceptTouchEvent(event)
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.actionMasked == MotionEvent.ACTION_UP && swiping) {
+                swiping = false
+                closeDrawer()
+                return true
+            }
+            if (event.actionMasked == MotionEvent.ACTION_CANCEL) swiping = false
+            return true
+        }
+    }
+
+    private fun closeDrawer(immediate: Boolean = false) {
+        drawerScreen = null
+        drawerScrollOffset = 0
+        updateDrawerBackCallback(false)
+        val overlay = drawerOverlay ?: run {
+            blurCalendarForDrawer(false)
+            return
+        }
+        val panelView = drawerPanel
+        val scrim = drawerScrim
+        val host = drawerHost
+        fun remove() {
+            if (drawerOverlay === overlay) {
+                host.removeView(overlay)
+                drawerOverlay = null
+                drawerPanel = null
+                drawerScrim = null
+                drawerScroll = null
+                blurCalendarForDrawer(false)
+            }
+        }
+        if (immediate || panelView == null || !android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            remove()
+        } else {
+            panelView.animate().translationX(-panelView.width.toFloat())
+                .setDuration(260).setInterpolator(DecelerateInterpolator()).start()
+            scrim?.animate()?.alpha(0f)?.setDuration(245)?.withEndAction { remove() }?.start()
+                ?: remove()
+        }
+    }
+
+    private fun drawerTitleBar(title: String) {
+        val h = row()
+        h.setPadding(0, dp(8), 0, dp(12))
+        if (drawerScreen != "menu") {
+            val back = TextView(this).apply {
+                text = "‹"
+                textSize = 28f
+                gravity = Gravity.CENTER
+                setTextColor(drawerAccent())
+                contentDescription = "Volver a opciones del menú"
+                setOnClickListener { openDrawer("menu") }
+            }
+            h.addView(back, LinearLayout.LayoutParams(dp(38), dp(42)))
+        }
+        val titleView = text(title, 23, ink, titleFont)
+        h.addView(titleView, LinearLayout.LayoutParams(0, -2, 1f))
+        val close = TextView(this).apply {
+            text = "×"
+            textSize = 29f
+            gravity = Gravity.CENTER
+            setTextColor(dim)
+            contentDescription = "Cerrar menú"
+            setOnClickListener { closeDrawer() }
+        }
+        h.addView(close, LinearLayout.LayoutParams(dp(42), dp(42)))
+        add(body, h)
+        val divider = View(this).apply { setBackgroundColor(line) }
+        add(body, divider.apply { layoutParams = LinearLayout.LayoutParams(-1, dp(1)) })
+    }
+
+    private fun drawerMenuContents() {
+        drawerTitleBar("Mi Turno")
+        add(body, text(
+            if (second) "ROTACIÓN 2-2-3 · MENÚ" else "CICLO 28 DÍAS · MENÚ",
+            11, drawerAccent(), monoFont
+        ))
+        val choices = listOf(
+            Triple("▦", "Calendarios", "calendar"),
+            Triple("⏱", "Horas Extra", "extras"),
+            Triple("⚙", "Ajustes Cal ${if (second) "2" else "1"}", "settings"),
+            Triple("🎺", "Días festivos", "holidays"),
+            Triple("🔔", "Recordatorios", "reminders"),
+        )
+        for ((symbol, label, destination) in choices) {
+            val entry = row()
+            entry.setPadding(dp(10), dp(8), dp(10), dp(8))
+            entry.background = RippleDrawable(
+                android.content.res.ColorStateList.valueOf(tint(drawerAccent(), 55)),
+                shape(if (dark) tint(drawerAccent(), 14) else color("#F5F6FA"), line, 10), null
+            )
+            val mark = text(symbol, 21, drawerAccent())
+            mark.gravity = Gravity.CENTER
+            entry.addView(mark, LinearLayout.LayoutParams(dp(42), dp(45)))
+            val labelView = text(label, 15, ink, mainFont)
+            entry.addView(labelView, LinearLayout.LayoutParams(0, -2, 1f))
+            entry.isClickable = true
+            entry.isFocusable = true
+            entry.contentDescription = label
+            entry.setOnClickListener {
+                if (destination == "calendar") {
+                    closeDrawer()
+                    scroll.smoothScrollTo(0, 0)
+                } else openDrawer(destination)
+            }
+            add(body, entry)
+        }
+    }
+
+    private fun mountDrawer(animated: Boolean, scrollTo: Int) {
+        if (!::drawerHost.isInitialized || drawerScreen == null) return
+        drawerOverlay?.let { previous -> (previous.parent as? ViewGroup)?.removeView(previous) }
+        val shade = FrameLayout(this).apply {
+            setPadding(0, drawerInsetTop, 0, drawerInsetBottom)
+            clipChildren = true
+            clipToPadding = false
+        }
+        val scrim = View(this).apply {
+            setBackgroundColor(Color.argb(165, 0, 0, 0))
+            setOnClickListener { closeDrawer() }
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+        shade.addView(scrim, FrameLayout.LayoutParams(-1, -1))
+        val widthPx = min(dp(300), (resources.displayMetrics.widthPixels * 0.84f).toInt())
+        val drawer = DrawerGestureFrame(this).apply {
+            background = shape(
+                if (dark) color(if (second) "#211923" else "#111116")
+                else color(if (second) "#F7EFF2" else "#FFFFFF"), line, 0
+            )
+            elevation = dp(15).toFloat()
+        }
+        val contentScroll = ScrollView(this).apply {
+            fillViewport = false
+            isVerticalScrollBarEnabled = true
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        val content = vertical().apply {
+            setPadding(dp(18), dp(20), dp(18), dp(28))
+        }
+        contentScroll.addView(content, ScrollView.LayoutParams(-1, -2))
+        drawer.addView(contentScroll, FrameLayout.LayoutParams(-1, -1))
+        shade.addView(drawer, FrameLayout.LayoutParams(widthPx, -1, Gravity.START))
+        drawerHost.addView(shade, FrameLayout.LayoutParams(-1, -1))
+
+        drawerOverlay = shade
+        drawerPanel = drawer
+        drawerScrim = scrim
+        drawerScroll = contentScroll
+        drawerRemindersAnchor = null
+
+        val mainBody = body
+        body = content
+        drawingInDrawer = true
+        try {
+            when (drawerScreen) {
+                "extras" -> extras()
+                "settings", "reminders" -> settings()
+                "holidays" -> holidays()
+                else -> drawerMenuContents()
+            }
+        } finally {
+            drawingInDrawer = false
+            body = mainBody
+        }
+
+        val scrollTarget = drawerRemindersAnchor.takeIf { drawerScreen == "reminders" }
+        contentScroll.post {
+            val destination = scrollTarget?.top ?: scrollTo
+            contentScroll.scrollTo(0, destination.coerceAtLeast(0))
+        }
+        updateDrawerBackCallback(true)
+        blurCalendarForDrawer(true)
+        if (animated && android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            scrim.alpha = 0f
+            drawer.translationX = -widthPx.toFloat()
+            scrim.animate().alpha(1f).setDuration(270).start()
+            drawer.animate().translationX(0f).setDuration(290)
+                .setInterpolator(DecelerateInterpolator()).start()
+        }
     }
 
     private fun header(title: String, sub: String) {
-        val r = row()
-        r.addView(
-            button(if (page == "calendar") "☰" else "‹") {
-                if (page == "calendar") menu()
-                else {
-                    page = "calendar"
-                    render(true)
+        if (drawingInDrawer) {
+            drawerTitleBar(
+                when (title) {
+                    "Horas Extra" -> "⏱ Horas Extra"
+                    "Equipos y ajustes" -> "⚙ Ajustes Cal ${if (second) "2" else "1"}"
+                    "Días festivos" -> "🎺 Días festivos"
+                    else -> title
                 }
-            },
-            LinearLayout.LayoutParams(dp(48), dp(48)),
-        )
+            )
+            return
+        }
+        val r = row()
+        r.addView(drawerToggle(), LinearLayout.LayoutParams(dp(48), dp(48)))
         val col = vertical().apply { setPadding(dp(12), 0, 0, 0) }
         add(col, text(sub, 10, dim, monoFont))
         add(col, text(title, if (second && page == "calendar") 19 else 22, ink, titleFont))
