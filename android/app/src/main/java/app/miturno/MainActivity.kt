@@ -703,11 +703,6 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(0, dp(3), 0, dp(3))
             })
-            if (deviceCalendarEvents[d]?.isNotEmpty() == true) {
-                col.addView(reminderBulb(13).apply {
-                    contentDescription = "Recordatorios en ${d}"
-                })
-            }
             col.addView(
                 text(
                     when (t) {
@@ -725,10 +720,21 @@ class MainActivity : Activity() {
                     setPadding(0, 0, 0, 0)
                 }
             )
-            col.setOnClickListener { selectDate(d) }
-            col.isFocusable = true
-            col.contentDescription = "${format(d)}: ${CalendarRules.label(t)}"
-            r.addView(col, LinearLayout.LayoutParams(dp(tileWidth), dp(77)).apply { marginEnd = dp(6) })
+            val tile = FrameLayout(this)
+            tile.addView(col, FrameLayout.LayoutParams(-1, -1))
+            if (deviceCalendarEvents[d]?.isNotEmpty() == true) {
+                tile.addView(reminderBulb(11), FrameLayout.LayoutParams(
+                    dp(11), dp(11), Gravity.TOP or Gravity.END,
+                ).apply {
+                    topMargin = dp(3)
+                    marginEnd = dp(3)
+                })
+            }
+            tile.setOnClickListener { selectDate(d) }
+            tile.isFocusable = true
+            tile.contentDescription = "${format(d)}: ${CalendarRules.label(t)}" +
+                (if (deviceCalendarEvents[d]?.isNotEmpty() == true) ", con recordatorio" else "")
+            r.addView(tile, LinearLayout.LayoutParams(dp(tileWidth), dp(72)).apply { marginEnd = dp(6) })
         }
         h.addView(r)
         add(body, h)
@@ -979,30 +985,52 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun compactMonthControl(label: String, action: () -> Unit) =
+        TextView(this).apply {
+            text = label
+            textSize = 15f
+            typeface = mainFont
+            setTextColor(ink)
+            gravity = Gravity.CENTER
+            minHeight = dp(34)
+            setPadding(dp(4), 0, dp(4), 0)
+            background = RippleDrawable(
+                android.content.res.ColorStateList.valueOf(tint(gold, 50)),
+                shape(if (dark) color("#1A1A22") else color("#F5F6FA"), line, 8),
+                null,
+            )
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+
     private fun monthCard() {
         val p = card()
         val nav = row()
         nav.addView(
-            button("‹") {
+            compactMonthControl("‹") {
                 month = month.minusMonths(1)
                 render()
             },
-            LinearLayout.LayoutParams(dp(45), -2),
+            LinearLayout.LayoutParams(dp(34), dp(34)),
         )
         val label =
-            button(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", es)), ink) {
+            compactMonthControl(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", es))) {
                 pick(month) {
                     month = it.withDayOfMonth(1)
                     render()
                 }
-            }
-        nav.addView(label, LinearLayout.LayoutParams(0, -2, 1f))
+            }.apply { typeface = titleFont; textSize = 14f }
+        nav.addView(label, LinearLayout.LayoutParams(0, dp(34), 1f).apply {
+            marginStart = dp(8)
+            marginEnd = dp(8)
+        })
         nav.addView(
-            button("›") {
+            compactMonthControl("›") {
                 month = month.plusMonths(1)
                 render()
             },
-            LinearLayout.LayoutParams(dp(45), -2),
+            LinearLayout.LayoutParams(dp(34), dp(34)),
         )
         add(p, nav)
         add(p, CalendarGrid())
@@ -1447,6 +1475,20 @@ else->"Guardia cancelada"}}",
 
     private fun settings() {
         header("Equipos y ajustes", "PERSONALIZA MI TURNO")
+        val appearance = card()
+        heading(appearance, "Iluminación ambiental")
+        add(appearance, text("Luz neón suave detrás de las tarjetas. Se pausa al salir de la aplicación y respeta las animaciones desactivadas en Android.", 12, dim))
+        val ambientSwitch = Switch(this).apply {
+            text = "Fondo neón animado"
+            textSize = 12f
+            setTextColor(ink)
+            isChecked = ambientEnabled()
+            setOnCheckedChangeListener { _, active ->
+                s.put("ambientGlow", if (active) "on" else "off")
+                render()
+            }
+        }
+        add(appearance, ambientSwitch)
         val p = card()
         heading(p, "👥 Integrantes por Equipo")
         add(p, text("Los integrantes se guardan por separado para cada calendario.", 12, dim))
@@ -1803,6 +1845,7 @@ else->"Guardia cancelada"}}",
 
     override fun onResume() {
         super.onResume()
+        if (::s.isInitialized && ambientEnabled()) ambientBackdrop?.start()
         if (::s.isInitialized) {
             if (deviceCalendarSynced && !deviceCalendar.hasPermission()) {
                 deviceCalendarRequest++
@@ -1822,12 +1865,14 @@ else->"Guardia cancelada"}}",
     }
 
     override fun onDestroy() {
+        ambientBackdrop?.stop()
         deviceCalendarRequest++
         deviceCalendarWorker.shutdownNow()
         super.onDestroy()
     }
 
     override fun onPause() {
+        ambientBackdrop?.stop()
         clock.removeCallbacks(refreshClock)
         super.onPause()
     }
