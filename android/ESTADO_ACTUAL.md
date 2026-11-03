@@ -1,6 +1,19 @@
 # Mi Turno Android — estado y próxima versión
 
-## 2026-11-03 — Corrección de parpadeo y menú WebView original (fuentes 1.1.3; SIN APK)
+## 2026-11-03 — APK 1.1.3 compilada: fluidez y menú original
+
+Compilada localmente desde `android/kotlin`, commit fuente `03495bfb717449f1ec2db67ce7648803ae062d30`. Incluye la actualización localizada al seleccionar fecha y cambiar de mes, sin reconstruir la ventana completa ni mostrar el fondo a través de un fundido; el menú abre directamente Horas Extra en Calendario 1 y Ajustes Cal 2 en Calendario 2.
+
+- APK: `Mi-Turno-Android-1.1.3.apk`; `app.miturno`, versionCode 5, minSdk 26.
+- SHA-256: `20dad64f1cb198b5f97be3c3a8a67e85c15c0041ffca2523620939ca838224ea`.
+- Certificado SHA-256: `41f530f81876173802f2156e29e105b9714c2ba9ef635a2195166b570800d8bc`, igual a las APK 1.1.2 y 1.1.1; firma v2/v3 y alineación verificadas.
+- Pasaron 12 aserciones estáticas en `check-fluidez-menu.js`; 23,013 comparaciones de reglas en 2,557 fechas + 2 cálculos de horas extra; 15 comprobaciones de eventos/selección; y 25 de almacenamiento/reportes.
+- `CalendarRules.kt` permanece en blob Git `75a84b35096aad361116c92de145c7bf5bcb40e6`; `Store.kt` en `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`.
+- Pendiente validación física en el teléfono de parpadeo, selección rápida, navegación mensual, menú, blur y gestos. Las pruebas de código no demuestran fluidez visual real. APK y clave no se suben al repositorio; no se usaron Actions ni Netlify.
+
+---
+
+## 2026-11-03 — Corrección de parpadeo y menú WebView original (implementación 1.1.3; APK compilada)
 
 **Solicitud del usuario:** al tocar una fecha o cambiar de mes se observaban destellos del fondo y transiciones poco fluidas. El menú lateral 1.1.2 añadía una pantalla inventada «Calendarios» que solamente devolvía al calendario, ocultando el contenido de «Horas Extra» y «Ajustes Cal 2» tras un segundo toque.
 
@@ -12,7 +25,7 @@
 
 **Cambios controlados:** se editaron la interfaz `MainActivity.kt`, la versión Gradle y documentación/pruebas. Próxima versión `1.1.3` (`versionCode 5`), base APK 1.1.2. `CalendarRules.kt` debe seguir con blob `75a84b35096aad361116c92de145c7bf5bcb40e6`, y `Store.kt` con `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`. No se modificaron fechas ancla, horario de día/noche, festivos ni operaciones de guardia/horas. No se cambió `main`.
 
-**Pruebas:** `android/tests/check-fluidez-menu.js` valida estáticamente estos invariantes y `android/tests/PRUEBAS_FLUIDEZ_MENU_1.1.3.md` indica pruebas físicas. **Pendientes:** compilar con Android SDK local y clave original privada, validar velocidad/fluidez y datos reales en Android, comparar pantalla con referencia. No se ha generado, firmado, instalado ni probado la APK 1.1.3 en este turno. No ejecutar GitHub Actions ni Netlify.
+**Pruebas:** el script `android/tests/check-fluidez-menu.js` pasó sus 12 aserciones estáticas ejecutables; 23,013 comparaciones de reglas + 2 de horas extra, 15 comprobaciones de eventos/selección y 25 aserciones de almacenamiento/reportes también pasaron. La APK 1.1.3 fue compilada y firmada localmente (detalle superior). **Pendiente:** probar en el teléfono la ausencia de parpadeo, los gestos y el diseño. No se afirma validación visual física. No ejecutar GitHub Actions ni Netlify.
 
 
 
