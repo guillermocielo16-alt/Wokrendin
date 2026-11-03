@@ -294,6 +294,10 @@ class MainActivity : Activity() {
             month = LocalDate.parse(it.getString("month"))
             page = it.getString("page", "calendar")
             drawerScreen = it.getString("drawerScreen")
+            if (drawerScreen == "menu" || drawerScreen == "reminders" ||
+                drawerScreen == "holidays") {
+                drawerScreen = if (second) "settings" else "extras"
+            }
             // Older versions stored these sections as fullscreen pages.
             if (page in listOf("extras", "settings", "holidays")) {
                 drawerScreen = page
@@ -477,7 +481,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun menu() = openDrawer("menu")
+    private fun menu() = openDrawer(if (second) "settings" else "extras")
 
     /** Theme-aware hamburger: green for the 28-day calendar, mauve for 2-2-3. */
     private fun drawerAccent(): Int = if (second) {
@@ -499,15 +503,12 @@ class MainActivity : Activity() {
         isClickable = true
         isFocusable = true
         contentDescription = "Abrir menú lateral"
-        setOnClickListener { openDrawer("menu") }
+        setOnClickListener { menu() }
     }
 
-    /**
-     * Keeps drawer navigation independent of the work calendar.
-     * Back from a section returns to the drawer list; back from the list closes it.
-     */
+    /** The WebView has one contextual drawer per calendar, not an intermediate menu. */
     private fun openDrawer(destination: String) {
-        require(destination in setOf("menu", "extras", "settings", "holidays", "reminders"))
+        require(destination in setOf("extras", "settings"))
         val wasClosed = drawerScreen == null
         drawerScreen = destination
         drawerScrollOffset = 0
@@ -515,9 +516,7 @@ class MainActivity : Activity() {
     }
 
     private fun drawerBack() {
-        if (drawerScreen == null) return
-        if (drawerScreen == "menu") closeDrawer()
-        else openDrawer("menu")
+        if (drawerScreen != null) closeDrawer()
     }
 
     private fun updateDrawerBackCallback(enable: Boolean) {
@@ -614,17 +613,6 @@ class MainActivity : Activity() {
     private fun drawerTitleBar(title: String) {
         val h = row()
         h.setPadding(0, dp(8), 0, dp(12))
-        if (drawerScreen != "menu") {
-            val back = TextView(this).apply {
-                text = "‹"
-                textSize = 28f
-                gravity = Gravity.CENTER
-                setTextColor(drawerAccent())
-                contentDescription = "Volver a opciones del menú"
-                setOnClickListener { openDrawer("menu") }
-            }
-            h.addView(back, LinearLayout.LayoutParams(dp(38), dp(42)))
-        }
         val titleView = text(title, 23, ink, titleFont)
         h.addView(titleView, LinearLayout.LayoutParams(0, -2, 1f))
         val close = TextView(this).apply {
@@ -641,44 +629,6 @@ class MainActivity : Activity() {
         body.addView(divider, LinearLayout.LayoutParams(-1, dp(1)).apply {
             bottomMargin = dp(16)
         })
-    }
-
-    private fun drawerMenuContents() {
-        drawerTitleBar("Mi Turno")
-        add(body, text(
-            if (second) "ROTACIÓN 2-2-3 · MENÚ" else "CICLO 28 DÍAS · MENÚ",
-            11, drawerAccent(), monoFont
-        ))
-        val choices = listOf(
-            Triple("▦", "Calendarios", "calendar"),
-            Triple("⏱", "Horas Extra", "extras"),
-            Triple("⚙", "Ajustes Cal ${if (second) "2" else "1"}", "settings"),
-            Triple("🎺", "Días festivos", "holidays"),
-            Triple("🔔", "Recordatorios", "reminders"),
-        )
-        for ((symbol, label, destination) in choices) {
-            val entry = row()
-            entry.setPadding(dp(10), dp(8), dp(10), dp(8))
-            entry.background = RippleDrawable(
-                android.content.res.ColorStateList.valueOf(tint(drawerAccent(), 55)),
-                shape(if (dark) tint(drawerAccent(), 14) else color("#F5F6FA"), line, 10), null
-            )
-            val mark = text(symbol, 21, drawerAccent())
-            mark.gravity = Gravity.CENTER
-            entry.addView(mark, LinearLayout.LayoutParams(dp(42), dp(45)))
-            val labelView = text(label, 15, ink, mainFont)
-            entry.addView(labelView, LinearLayout.LayoutParams(0, -2, 1f))
-            entry.isClickable = true
-            entry.isFocusable = true
-            entry.contentDescription = label
-            entry.setOnClickListener {
-                if (destination == "calendar") {
-                    closeDrawer()
-                    scroll.smoothScrollTo(0, 0)
-                } else openDrawer(destination)
-            }
-            add(body, entry)
-        }
     }
 
     private fun mountDrawer(animated: Boolean, scrollTo: Int) {
@@ -728,20 +678,14 @@ class MainActivity : Activity() {
         try {
             when (drawerScreen) {
                 "extras" -> extras()
-                "settings", "reminders" -> settings()
-                "holidays" -> holidays()
-                else -> drawerMenuContents()
+                "settings" -> settings()
             }
         } finally {
             drawingInDrawer = false
             body = mainBody
         }
 
-        val scrollTarget = drawerRemindersAnchor.takeIf { drawerScreen == "reminders" }
-        contentScroll.post {
-            val destination = scrollTarget?.top ?: scrollTo
-            contentScroll.scrollTo(0, destination.coerceAtLeast(0))
-        }
+        contentScroll.post { contentScroll.scrollTo(0, scrollTo.coerceAtLeast(0)) }
         updateDrawerBackCallback(true)
         blurCalendarForDrawer(true)
         if (animated && android.animation.ValueAnimator.areAnimatorsEnabled()) {
