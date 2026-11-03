@@ -1,4 +1,19 @@
-# Mi Turno Android 1.1.0
+# Mi Turno Android — estado y próxima versión
+
+## 2026-11-02 — Revisión visual neón / WebView (fuentes 1.1.1, SIN APK)
+
+Comparación con las capturas del usuario y CSS web v10: resplandor cálido/violeta/verde bajo tarjetas, franja horizontal compacta, botón principal verde con degradado y flechas pequeñas de navegación mensual. La web tiene radiales y sombras fijas; en Kotlin se añadieron radiales **animados lentamente** con `NeonAmbientDrawable.kt` como fondo de la ventana, sin mover contenido ni animar textos. Ciclo de 26 s, repintado limitado aproximadamente a 12 FPS, se pausa en `onPause` y se reanuda en `onResume`. Respeta las animaciones desactivadas por Android y permite apagarlo desde Ajustes.
+
+Se recuperaron proporciones del carrusel web: ancho adaptable 52–67 dp, altura 72 dp, números 16 sp, etiquetas 9–10 sp, seis días visibles aprox. según pantalla; el foquito de recordatorio es una superposición de 11 dp que no cambia el tamaño de la tarjeta. Los botones de navegación mensual son 34 dp (antes 45 dp con alto mínimo 48); borde de selección de tira ámbar; gradientes con los mismos colores del calendario original. El botón «Alternar Tipo de Calendario» tiene transición cromática propia para ambos tipos y el botón de tema conserva control individual.
+
+- Archivos cambiados: `MainActivity.kt`, nuevo `NeonAmbientDrawable.kt`, `build.gradle.kts` y documentación.
+- Versión reservada **1.1.1 (versionCode 3)**; la APK 1.1.0 entregada previamente **NO** incluye estos ajustes.
+- Verificación estática: carga de archivos GitHub y presencia de métodos/recursos; sin instalación ni captura de la nueva versión.
+- `CalendarRules.kt` conserva SHA Git `75a84b35096aad361116c92de145c7bf5bcb40e6`; `Store.kt` conserva `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`. No cambian anclas, horarios, festivos, guardias ni rotaciones.
+- Pendiente: compilación local con Android SDK y firma original privada; validar iluminación nocturna/diurna, consumo/batería, scroll horizontal, barra mensual, tema claro/oscuro, permisos y actualización sin borrar datos. No ejecutar GitHub Actions o Netlify.
+
+
+### Última APK entregada: versión 1.1.0
 
 Entrega del 2 de noviembre de 2026 (México). Rama `android/kotlin` de `guillermocielo16-alt/Wokrendin`. Proyecto Android Studio en `android/`. Versión 1.1.0, código 2, paquete `app.miturno`, Android 8 o posterior.
 
