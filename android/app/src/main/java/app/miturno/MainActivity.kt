@@ -1146,11 +1146,88 @@ class MainActivity : Activity() {
         }
     }
 
+    /**
+     * Replace only the cards affected by the selected date.
+     * Never detach the Activity root or restart the ambient background for a date tap.
+     */
+    private fun replaceCalendarSection(current: View?, create: () -> Unit): View? {
+        val previous = current ?: return null
+        val host = previous.parent as? ViewGroup ?: return null
+        val position = host.indexOfChild(previous)
+        if (position < 0) return null
+        val staging = vertical()
+        val originalBody = body
+        body = staging
+        try {
+            create()
+        } finally {
+            body = originalBody
+        }
+        if (staging.childCount != 1) return null
+        val replacement = staging.getChildAt(0)
+        staging.removeViewAt(0)
+        val params = previous.layoutParams
+        // Both changes happen within one UI transaction, so there is no blank frame.
+        host.removeViewAt(position)
+        host.addView(replacement, position, params)
+        return replacement
+    }
+
+    private fun updateVisibleMonth(date: LocalDate) {
+        val next = date.withDayOfMonth(1)
+        if (next == month) return
+        month = next
+        if (page == "calendar" && monthSection != null) {
+            replaceCalendarSection(monthSection) { monthCard() }
+        } else render()
+    }
+
+    private fun refreshStripSelection(previous: LocalDate, current: LocalDate) {
+        val start = stripStartDate
+        if (start == null || current.isBefore(start) || !current.isBefore(start.plusDays(30))) {
+            replaceCalendarSection(stripSection) { strip() }
+        } else {
+            stripTiles[previous]?.background = stripSurface(type(previous), false)
+            stripTiles[current]?.background = stripSurface(type(current), true)
+        }
+        // Only scroll the horizontal strip if the selected date is outside its viewport.
+        stripSection?.post {
+            val holder = stripSection ?: return@post
+            val chip = (stripTiles[current]?.parent as? View) ?: return@post
+            val left = chip.left
+            val right = chip.right
+            if (left < holder.scrollX || right > holder.scrollX + holder.width) {
+                holder.smoothScrollTo((left - holder.width / 3).coerceAtLeast(0), 0)
+            }
+        }
+    }
+
     private fun selectDate(d: LocalDate) {
+        val previous = selected
+        val priorMonth = month
         hasSelection = true
         selected = d
         month = d.withDayOfMonth(1)
-        render()
+        if (page != "calendar" || drawerScreen != null || !::scroll.isInitialized) {
+            render()
+            return
+        }
+        if (previous != d || priorMonth != month) {
+            headerDateLabel?.text =
+                (if (second) "CALENDARIO DE TRABAJO · " else "CICLO 28 DÍAS · ") + format(d)
+            if (!second) {
+                replaceCalendarSection(heroSection) { hero(d, d == LocalDate.now()) }
+                replaceCalendarSection(manageSection) { manage() }
+                replaceCalendarSection(summarySection) { summary() }
+            }
+            replaceCalendarSection(lookupPanel) { lookup() }
+            if (priorMonth != month) {
+                replaceCalendarSection(monthSection) { monthCard() }
+            } else {
+                monthGrid?.invalidate()
+            }
+            refreshStripSelection(previous, d)
+        }
         scroll.post { scroll.smoothScrollTo(0, lookupPanel?.top ?: 0) }
     }
 
@@ -1273,28 +1350,19 @@ class MainActivity : Activity() {
         monthSection = p
         val nav = row()
         nav.addView(
-            compactMonthControl("‹") {
-                month = month.minusMonths(1)
-                render()
-            },
+            compactMonthControl("‹") { updateVisibleMonth(month.minusMonths(1)) },
             LinearLayout.LayoutParams(dp(34), dp(34)),
         )
         val label =
             compactMonthControl(month.format(DateTimeFormatter.ofPattern("MMMM yyyy", es))) {
-                pick(month) {
-                    month = it.withDayOfMonth(1)
-                    render()
-                }
+                pick(month) { updateVisibleMonth(it) }
             }.apply { typeface = titleFont; textSize = 14f }
         nav.addView(label, LinearLayout.LayoutParams(0, dp(34), 1f).apply {
             marginStart = dp(8)
             marginEnd = dp(8)
         })
         nav.addView(
-            compactMonthControl("›") {
-                month = month.plusMonths(1)
-                render()
-            },
+            compactMonthControl("›") { updateVisibleMonth(month.plusMonths(1)) },
             LinearLayout.LayoutParams(dp(34), dp(34)),
         )
         add(p, nav)
