@@ -46,7 +46,6 @@ class MainActivity : Activity() {
     private var drawerScrollOffset = 0
     private var drawerInsetTop = 0
     private var drawerInsetBottom = 0
-    private var drawerRemindersAnchor: View? = null
     private var platformDrawerBack: OnBackInvokedCallback? = null
     private var second = false
     private var team = "A"
@@ -688,7 +687,6 @@ class MainActivity : Activity() {
         drawerPanel = drawer
         drawerScrim = scrim
         drawerScroll = contentScroll
-        drawerRemindersAnchor = null
 
         val mainBody = body
         body = content
@@ -1847,7 +1845,6 @@ else->"Guardia cancelada"}}",
         }
         add(appearance, ambientSwitch)
         val reminders = card()
-        if (drawingInDrawer && drawerScreen == "reminders") drawerRemindersAnchor = reminders
         heading(reminders, "🔔 Recordatorio del próximo turno")
         add(
             reminders,
