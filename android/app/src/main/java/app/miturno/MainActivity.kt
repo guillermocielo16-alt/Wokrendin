@@ -1767,35 +1767,6 @@ else->"Guardia cancelada"}}",
 
     private fun settings() {
         header("Equipos y ajustes", "PERSONALIZA MI TURNO")
-        val appearance = card()
-        heading(appearance, "Iluminación ambiental")
-        add(appearance, text("Luz neón suave detrás de las tarjetas. Se pausa al salir de la aplicación y respeta las animaciones desactivadas en Android.", 12, dim))
-        val ambientSwitch = Switch(this).apply {
-            text = "Fondo neón animado"
-            textSize = 12f
-            setTextColor(ink)
-            isChecked = ambientEnabled()
-            setOnCheckedChangeListener { _, active ->
-                s.put("ambientGlow", if (active) "on" else "off")
-                render()
-            }
-        }
-        add(appearance, ambientSwitch)
-        val p = card()
-        heading(p, "👥 Integrantes por Equipo")
-        add(p, text("Los integrantes se guardan por separado para cada calendario.", 12, dim))
-        val names = mutableMapOf<String, EditText>()
-        for (t in listOf("A", "B", "C", "D")) names[t] =
-            input(p, "Equipo $t", s.text("member${if(second)2 else 1}$t"))
-        add(
-            p,
-            button("Guardar integrantes") {
-                names.forEach { (t, v) ->
-                    s.put("member${if(second)2 else 1}$t", v.text.toString())
-                }
-                toast("Integrantes guardados")
-            },
-        )
         if (second) {
             val profile = card()
             heading(profile, "Mi Perfil de Trabajo")
@@ -1825,6 +1796,9 @@ else->"Guardia cancelada"}}",
                         .show()
                 },
             )
+            heading(profile, "Mostrar en el Calendario")
+            toggle(profile, "⭐ Resaltar descansos compartidos con el Equipo A", "stars")
+            toggle(profile, "🛡 Resaltar guardias de A en mis días de descanso", "guardsVisible")
             heading(profile, "Mis Áreas (máximo 4)")
             val areas = (1..4).associateWith { input(profile, "Área $it", s.text("area$it")) }
             add(
@@ -1854,6 +1828,35 @@ else->"Guardia cancelada"}}",
                 },
             )
         }
+        val p = card()
+        heading(p, "👥 Integrantes por Equipo")
+        add(p, text("Los integrantes se guardan por separado para cada calendario.", 12, dim))
+        val names = mutableMapOf<String, EditText>()
+        for (t in listOf("A", "B", "C", "D")) names[t] =
+            input(p, "Equipo $t", s.text("member${if(second)2 else 1}$t"))
+        add(
+            p,
+            button("Guardar integrantes") {
+                names.forEach { (t, v) ->
+                    s.put("member${if(second)2 else 1}$t", v.text.toString())
+                }
+                toast("Integrantes guardados")
+            },
+        )
+        val appearance = card()
+        heading(appearance, "Iluminación ambiental")
+        add(appearance, text("Luz neón suave detrás de las tarjetas. Se pausa al salir de la aplicación y respeta las animaciones desactivadas en Android.", 12, dim))
+        val ambientSwitch = Switch(this).apply {
+            text = "Fondo neón animado"
+            textSize = 12f
+            setTextColor(ink)
+            isChecked = ambientEnabled()
+            setOnCheckedChangeListener { _, active ->
+                s.put("ambientGlow", if (active) "on" else "off")
+                render()
+            }
+        }
+        add(appearance, ambientSwitch)
         val reminders = card()
         if (drawingInDrawer && drawerScreen == "reminders") drawerRemindersAnchor = reminders
         heading(reminders, "🔔 Recordatorio del próximo turno")
