@@ -1,6 +1,19 @@
 # Mi Turno Android — estado y próxima versión
 
-## 2026-11-02 — Revisión visual neón / WebView (fuentes 1.1.1, SIN APK)
+## 2026-11-03 — APK 1.1.1 compilada: paridad visual neón / WebView
+
+Se compiló la rama `android/kotlin` desde el commit `4ed366438a5cf77562bbed6614ad361c41c4537b`. Incluye el resplandor neón ambiental animado lentamente como fondo, los colores y gradientes de ambas variantes, la tira horizontal compacta, indicadores superpuestos, borde ámbar en la fecha activa y controles mensuales compactos documentados abajo. El efecto se pausa cuando la app va a segundo plano, respeta las animaciones desactivadas en Android y se puede apagar desde Ajustes.
+
+- APK: `Mi-Turno-Android-1.1.1.apk`; paquete `app.miturno`, versionCode 3, Android 8 o posterior.
+- SHA-256 APK: `3ec3b55bb046c9e25929d7a6828b6ce315ce589b1c91c4b81fa2eb2cc1e66d49`.
+- Certificado SHA-256: `41f530f81876173802f2156e29e105b9714c2ba9ef635a2195166b570800d8bc`, igual a la 1.1.0. Firma v2/v3 verificada y APK alineada; permite actualización sobre la instalación anterior con la misma firma.
+- Pruebas locales: 23,013 comparaciones de reglas (2,557 fechas) y 2 comprobaciones de horas extra; 15 verificaciones de eventos/selección; 25 aserciones de almacenamiento, horas extra y reportes; todas aprobadas.
+- `CalendarRules.kt` conserva blob Git `75a84b35096aad361116c92de145c7bf5bcb40e6`; `Store.kt` conserva `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`.
+- Pendiente: instalar y revisar visualmente en el teléfono, especialmente el efecto de luz, batería, temas, navegación y notificaciones. No se afirma validación física. APK y clave permanecen fuera del repositorio; no se ejecutaron GitHub Actions ni Netlify.
+
+---
+
+## 2026-11-02 — Revisión visual neón / WebView (registro de fuentes previo a la APK)
 
 Comparación con las capturas del usuario y CSS web v10: resplandor cálido/violeta/verde bajo tarjetas, franja horizontal compacta, botón principal verde con degradado y flechas pequeñas de navegación mensual. La web tiene radiales y sombras fijas; en Kotlin se añadieron radiales **animados lentamente** con `NeonAmbientDrawable.kt` como fondo de la ventana, sin mover contenido ni animar textos. Ciclo de 26 s, repintado limitado aproximadamente a 12 FPS, se pausa en `onPause` y se reanuda en `onResume`. Respeta las animaciones desactivadas por Android y permite apagarlo desde Ajustes.
 
@@ -10,10 +23,10 @@ Se recuperaron proporciones del carrusel web: ancho adaptable 52–67 dp, altura
 - Versión reservada **1.1.1 (versionCode 3)**; la APK 1.1.0 entregada previamente **NO** incluye estos ajustes.
 - Verificación estática: carga de archivos GitHub y presencia de métodos/recursos; sin instalación ni captura de la nueva versión.
 - `CalendarRules.kt` conserva SHA Git `75a84b35096aad361116c92de145c7bf5bcb40e6`; `Store.kt` conserva `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`. No cambian anclas, horarios, festivos, guardias ni rotaciones.
-- Pendiente: compilación local con Android SDK y firma original privada; validar iluminación nocturna/diurna, consumo/batería, scroll horizontal, barra mensual, tema claro/oscuro, permisos y actualización sin borrar datos. No ejecutar GitHub Actions o Netlify.
+- La compilación de estas fuentes se completó el 3 de noviembre de 2026 como APK 1.1.1 (ver registro superior). Pendiente: validar en teléfono iluminación nocturna/diurna, consumo/batería, scroll horizontal, barra mensual, tema claro/oscuro, permisos y actualización sin borrar datos. No ejecutar GitHub Actions o Netlify.
 
 
-### Última APK entregada: versión 1.1.0
+### APK anterior: versión 1.1.0 (2 de noviembre de 2026)
 
 Entrega del 2 de noviembre de 2026 (México). Rama `android/kotlin` de `guillermocielo16-alt/Wokrendin`. Proyecto Android Studio en `android/`. Versión 1.1.0, código 2, paquete `app.miturno`, Android 8 o posterior.
 
