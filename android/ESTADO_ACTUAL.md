@@ -1,5 +1,21 @@
 # Mi Turno Android — estado y próxima versión
 
+## 2026-11-03 — Corrección de parpadeo y menú WebView original (fuentes 1.1.3; SIN APK)
+
+**Solicitud del usuario:** al tocar una fecha o cambiar de mes se observaban destellos del fondo y transiciones poco fluidas. El menú lateral 1.1.2 añadía una pantalla inventada «Calendarios» que solamente devolvía al calendario, ocultando el contenido de «Horas Extra» y «Ajustes Cal 2» tras un segundo toque.
+
+**Diagnóstico confirmado en el código:** `selectDate()` invocaba `render()`, que construía una nueva ventana completa con `setContentView`. Además, `render(animate=true)` colocaba el contenido en `alpha=0` durante el fundido, exponiendo el fondo. En el HTML original, el icono ☰ del Calendario 1 abría directamente el panel **Horas Extra** y el del Calendario 2 el panel **Ajustes Cal 2**; no existía ningún índice de navegación «Calendarios».
+
+**Cambios de interfaz:** la ventana completa se construye fuera de vista y se intercambia una vez completa. La selección de fechas utiliza `replaceCalendarSection()`: actualiza únicamente encabezado, resultado, sección de guardia/vacaciones, resumen, mes y tira horizontal; conserva el fondo animado y no reinicia la Activity. La misma fecha del mes repinta el indicador con `invalidate`; cambiar de mes reemplaza solo la tarjeta mensual; la barra conserva el desplazamiento cuando la fecha ya está en su rango. Se eliminó el fundido a transparencia total; los cambios mayores solo usan un pequeño desplazamiento sin ocultar contenidos. La primera selección del día actual también actualiza el borde.
+
+**Menú:** se eliminó `drawerMenuContents()` y la fila «Calendarios» redundante. El botón ☰ abre directamente `extras()` para el ciclo 28 días y `settings()` para la rotación 2-2-3. Atrás, ×, toque fuera o gesto de cierre salen del panel, sin página intermedia. Se conserva el ancho/blur/animación/colores diferenciados del panel 1.1.2. Horas Extra vuelve al orden WebView **total → registrar fracción → guardias/fracciones → reportes → integrantes**. El total se muestra en grande (42 sp, «hrs»), las herramientas nativas ya existentes de iluminación, notificaciones y copia permanecen accesibles al final del mismo panel, sin introducir nuevas páginas. Ajustes Cal 2 mantiene perfil, turno, resaltados, áreas e integrantes.
+
+**Cambios controlados:** se editaron la interfaz `MainActivity.kt`, la versión Gradle y documentación/pruebas. Próxima versión `1.1.3` (`versionCode 5`), base APK 1.1.2. `CalendarRules.kt` debe seguir con blob `75a84b35096aad361116c92de145c7bf5bcb40e6`, y `Store.kt` con `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`. No se modificaron fechas ancla, horario de día/noche, festivos ni operaciones de guardia/horas. No se cambió `main`.
+
+**Pruebas:** `android/tests/check-fluidez-menu.js` valida estáticamente estos invariantes y `android/tests/PRUEBAS_FLUIDEZ_MENU_1.1.3.md` indica pruebas físicas. **Pendientes:** compilar con Android SDK local y clave original privada, validar velocidad/fluidez y datos reales en Android, comparar pantalla con referencia. No se ha generado, firmado, instalado ni probado la APK 1.1.3 en este turno. No ejecutar GitHub Actions ni Netlify.
+
+
+
 ## 2026-11-03 — APK 1.1.2 compilada: panel lateral restaurado
 
 Compilación local desde la rama `android/kotlin`, commit fuente `6ce6872ce79213cbc2d1d8b43388887ea4b087b2`. Esta versión incorpora el panel lateral nativo sobre el calendario, navegación interna, contenido de Horas Extra y ajustes, gestos Atrás/cierre, colores por calendario, oscurecimiento y blur de fondo en Android 12+. En Android 8–11 conserva el oscurecimiento sin blur.
