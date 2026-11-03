@@ -1,6 +1,12 @@
 # Historial Android
 
-## 2026-11-03 — Menú lateral restaurado (fuentes para APK 1.1.2, SIN COMPILAR)
+## 2026-11-03 — APK Android 1.1.2: compilación del panel lateral
+
+Compilada desde `android/kotlin` (commit fuente `6ce6872ce79213cbc2d1d8b43388887ea4b087b2`): `Mi-Turno-Android-1.1.2.apk`, versionCode 4, paquete `app.miturno`, minSdk 26. SHA-256 `80e1adddd81b09320459e29ef960554909f7e466aabcbcb0cb67102a79261d04`. Firma v2/v3 y alineación APK verificadas. Certificado SHA-256 `41f530f81876173802f2156e29e105b9714c2ba9ef635a2195166b570800d8bc`, igual a la APK 1.1.1.
+
+Pasaron 23,013 comparaciones de reglas + 2 comprobaciones de horas extra, 15 verificaciones de eventos y selección, y 25 aserciones de almacenamiento/reportes. `CalendarRules.kt` y `Store.kt` conservan sus blobs esperados. Pruebas en teléfono pendientes para validar menú, blur, gestos y navegación. El APK no está guardado en GitHub. Sin Actions ni Netlify.
+
+## 2026-11-03 — Menú lateral restaurado (detalle de fuentes 1.1.2)
 
 Se compararon cuatro capturas de referencia (panel WebView Horas Extra y Ajustes Cal 2, frente al cuadro gris de selección nativa) con el código Kotlin. La causa fue que el botón ☰ invocaba `AlertDialog.Builder(...).setItems(...)` y sustituía el calendario por páginas completas.
 
@@ -12,7 +18,7 @@ Se compararon cuatro capturas de referencia (panel WebView Horas Extra y Ajustes
 
 **Integridad:** `CalendarRules.kt` Git SHA `75a84b35096aad361116c92de145c7bf5bcb40e6` y `Store.kt` `adfe8a20c7a30def35c7bf7e5c1eebc92176985a` permanecen exactamente iguales al punto seguro. Paquete `app.miturno`, lectura de calendario Android, notificaciones y firmas sin cambios. Se reservó `versionCode 4` / `versionName 1.1.2`.
 
-**Verificación realizada:** inspección de cambios, presencia de panel en lugar de `AlertDialog.setItems`, revisión estructural del Kotlin, comparación de hashes de reglas y datos. **No se ha compilado ni instalado la 1.1.2**, ni se ha probado el desenfoque y gesto en dispositivo. El SDK Android y la clave privada no están disponibles en este entorno. Para probar y compilar localmente utilizar `android/tests/VERIFICACION_MENU_LATERAL_1.1.2.md`; no usar GitHub Actions ni Netlify.
+**Estado actualizado:** la APK 1.1.2 se compiló localmente el 3 de noviembre de 2026. Ver la entrada superior para hash, firma y suites JVM. La inspección física del panel, blur y gestos en el teléfono continúa pendiente. La lista detallada de pruebas manuales está en `android/tests/VERIFICACION_MENU_LATERAL_1.1.2.md`. Sin GitHub Actions ni Netlify.
 
 
 
