@@ -1,6 +1,6 @@
 # Comprobación local — Fluidez y menú original — Android 1.1.3
 
-**Estado:** fuentes implementadas; APK **no compilada ni probada físicamente** en esta revisión. Las verificaciones de código no certifican FPS ni ausencia visual de parpadeos en un dispositivo.
+**Estado:** APK 1.1.3 compilada y firmada; validación física pendiente. SHA-256 `20dad64f1cb198b5f97be3c3a8a67e85c15c0041ffca2523620939ca838224ea`. Certificado `41f530f81876173802f2156e29e105b9714c2ba9ef635a2195166b570800d8bc`, igual a 1.1.2. La compilación y pruebas de código no certifican FPS ni ausencia visual de parpadeos en un dispositivo.
 
 ## Pruebas estáticas locales (sin CI)
 
@@ -10,7 +10,7 @@ Ejecutar en la raíz del repositorio:
 node android/tests/check-fluidez-menu.js
 ```
 
-Comprueba que no cambiaron los blobs de `CalendarRules.kt` y `Store.kt`, que el menú va directamente al apartado original, que no hay pantalla intermedia «Calendarios», que la actualización de fechas es localizada y que la pantalla completa se prepara antes del reemplazo.
+Comprueba que no cambiaron los blobs de `CalendarRules.kt` y `Store.kt`, que el menú va directamente al apartado original, que no hay pantalla intermedia «Calendarios», que la actualización de fechas es localizada y que la pantalla completa se prepara antes del reemplazo. En esta revisión pasaron 12 aserciones.
 
 ## Pruebas manuales necesarias en la APK 1.1.3
 
