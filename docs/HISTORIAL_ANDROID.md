@@ -1,6 +1,12 @@
 # Historial Android
 
-## 2026-11-03 — Corrección de parpadeo y menú WebView original (fuentes 1.1.3; SIN APK)
+## 2026-11-03 — APK 1.1.3: fluidez y menú original
+
+Compilada desde `android/kotlin` (commit fuente `03495bfb717449f1ec2db67ce7648803ae062d30`): APK `Mi-Turno-Android-1.1.3.apk`, versionCode 5, package `app.miturno`, minSdk 26, SHA-256 `20dad64f1cb198b5f97be3c3a8a67e85c15c0041ffca2523620939ca838224ea`. Firma v2/v3 y alineación verificadas. Certificado `41f530f81876173802f2156e29e105b9714c2ba9ef635a2195166b570800d8bc`, igual a la 1.1.2.
+
+Pasaron 12 aserciones estáticas; 23,013 comparaciones de reglas + 2 de horas extra; 15 verificaciones de eventos/selección; 25 aserciones de almacenamiento/reportes. `CalendarRules.kt` y `Store.kt` conservan los blobs esperados. La revisión de gestos y fluidez visual en dispositivo queda pendiente. APK y clave se conservan fuera de GitHub. Sin Actions ni Netlify.
+
+## 2026-11-03 — Corrección de parpadeo y menú WebView original (fuentes 1.1.3)
 
 **Solicitud del usuario:** al tocar una fecha o cambiar de mes se observaban destellos del fondo y transiciones poco fluidas. El menú lateral 1.1.2 añadía una pantalla inventada «Calendarios» que solamente devolvía al calendario, ocultando el contenido de «Horas Extra» y «Ajustes Cal 2» tras un segundo toque.
 
@@ -12,7 +18,7 @@
 
 **Cambios controlados:** se editaron la interfaz `MainActivity.kt`, la versión Gradle y documentación/pruebas. Próxima versión `1.1.3` (`versionCode 5`), base APK 1.1.2. `CalendarRules.kt` debe seguir con blob `75a84b35096aad361116c92de145c7bf5bcb40e6`, y `Store.kt` con `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`. No se modificaron fechas ancla, horario de día/noche, festivos ni operaciones de guardia/horas. No se cambió `main`.
 
-**Pruebas:** `android/tests/check-fluidez-menu.js` valida estáticamente estos invariantes y `android/tests/PRUEBAS_FLUIDEZ_MENU_1.1.3.md` indica pruebas físicas. **Pendientes:** compilar con Android SDK local y clave original privada, validar velocidad/fluidez y datos reales en Android, comparar pantalla con referencia. No se ha generado, firmado, instalado ni probado la APK 1.1.3 en este turno. No ejecutar GitHub Actions ni Netlify.
+**Pruebas:** el script `android/tests/check-fluidez-menu.js` pasó 12 aserciones estáticas ejecutables. La APK se compiló y firmó localmente el 3 de noviembre. Las suites de reglas, eventos, almacenamiento y reportes pasaron. Queda pendiente validación visual física del parpadeo, navegación y menú. No ejecutar GitHub Actions ni Netlify.
 
 
 
