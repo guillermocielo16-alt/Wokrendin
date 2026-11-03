@@ -1641,6 +1641,33 @@ else->"Disponible"}else""}",
                 }
             },
         )
+        val records = card()
+        heading(records, "Guardias trabajadas y fracciones")
+        val g = s.data("guards")
+        val f = s.data("fractions")
+        if (g.length() + f.length() == 0)
+            add(
+                records,
+                text("Aún no has registrado ninguna guardia o fracción como trabajada.", 12, dim),
+            )
+        g.keys().asSequence().sorted().forEach { k ->
+            val v = g.getString(k)
+            add(
+                records,
+                text(
+                    "${k.substringBefore('_')} · Equipo ${k.substringAfter('_')}\n${when(v){"trabaja_dia"->"Turno DÍA · +12 h"
+"trabaja_noche"->"Turno NOCHE · +12 h"
+else->"Guardia cancelada"}}",
+                    13,
+                    accent("guardia"),
+                ),
+            )
+        }
+        f.keys().asSequence().sorted().forEach { k ->
+            val v = f.getJSONObject(k)
+            add(records, text("$k · +${v.getDouble("hours")} h\n${v.getString("note")}", 13, gold))
+            add(records, button("Editar fracción de $k", dim) { editFraction(k) })
+        }
         val rep = card()
         heading(rep, "Reporte de guardias y vacaciones")
         val rr = row()
@@ -1738,33 +1765,9 @@ else->"Disponible"}else""}",
             LinearLayout.LayoutParams(0, -2, 1f),
         )
         add(rep, actions)
-        val records = card()
-        heading(records, "Historial")
-        val g = s.data("guards")
-        val f = s.data("fractions")
-        if (g.length() + f.length() == 0)
-            add(
-                records,
-                text("Aún no has registrado ninguna guardia o fracción como trabajada.", 12, dim),
-            )
-        g.keys().asSequence().sorted().forEach { k ->
-            val v = g.getString(k)
-            add(
-                records,
-                text(
-                    "${k.substringBefore('_')} · Equipo ${k.substringAfter('_')}\n${when(v){"trabaja_dia"->"Turno DÍA · +12 h"
-"trabaja_noche"->"Turno NOCHE · +12 h"
-else->"Guardia cancelada"}}",
-                    13,
-                    accent("guardia"),
-                ),
-            )
-        }
-        f.keys().asSequence().sorted().forEach { k ->
-            val v = f.getJSONObject(k)
-            add(records, text("$k · +${v.getDouble("hours")} h\n${v.getString("note")}", 13, gold))
-            add(records, button("Editar fracción de $k", dim) { editFraction(k) })
-        }
+        // Original WebView: member editor below reports. No intermediate "Calendarios" page.
+        memberEditor()
+        generalSettings()
     }
 
     private fun editFraction(k: String) {
@@ -1809,69 +1812,8 @@ else->"Guardia cancelada"}}",
         else done(s.report(reportStart, reportEnd))
     }
 
-    private fun settings() {
-        header("Equipos y ajustes", "PERSONALIZA MI TURNO")
-        if (second) {
-            val profile = card()
-            heading(profile, "Mi Perfil de Trabajo")
-            val te = arrayOf("A", "B", "C", "D")
-            add(
-                profile,
-                button("Equipo ${s.text("profileTeam","C")}", gold) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Equipo")
-                        .setItems(te) { _, i ->
-                            s.put("profileTeam", te[i])
-                            render()
-                        }
-                        .show()
-                },
-            )
-            add(
-                profile,
-                button("Turno ${s.text("shift","dia")}", gold) {
-                    AlertDialog.Builder(this)
-                        .setTitle("Turno")
-                        .setItems(arrayOf("Día · 08–20", "Noche · 20–08")) { _, i ->
-                            s.put("shift", if (i == 0) "dia" else "noche")
-                            persist()
-                            render()
-                        }
-                        .show()
-                },
-            )
-            heading(profile, "Mostrar en el Calendario")
-            toggle(profile, "⭐ Resaltar descansos compartidos con el Equipo A", "stars")
-            toggle(profile, "🛡 Resaltar guardias de A en mis días de descanso", "guardsVisible")
-            heading(profile, "Mis Áreas (máximo 4)")
-            val areas = (1..4).associateWith { input(profile, "Área $it", s.text("area$it")) }
-            add(
-                profile,
-                button("Guardar áreas") {
-                    areas.forEach { (i, v) -> s.put("area$i", v.text.toString().trim()) }
-                    render()
-                    toast("Áreas guardadas")
-                },
-            )
-            add(
-                profile,
-                button(
-                    "Área activa: ${s.text("area"+s.text("activeArea","1")).ifEmpty{"Sin área"}}",
-                    gold,
-                ) {
-                    val values = (1..4).filter { s.text("area$it").isNotEmpty() }
-                    if (values.isEmpty()) toast("Escribe y guarda un área primero")
-                    else
-                        AlertDialog.Builder(this)
-                            .setTitle("Área activa")
-                            .setItems(values.map { s.text("area$it") }.toTypedArray()) { _, i ->
-                                s.put("activeArea", values[i].toString())
-                                render()
-                            }
-                            .show()
-                },
-            )
-        }
+    /** Original WebView sidebar places team members after hour reports; reuse same editor. */
+    private fun memberEditor() {
         val p = card()
         heading(p, "👥 Integrantes por Equipo")
         add(p, text("Los integrantes se guardan por separado para cada calendario.", 12, dim))
@@ -1887,6 +1829,10 @@ else->"Guardia cancelada"}}",
                 toast("Integrantes guardados")
             },
         )
+    }
+
+    /** Existing app-level options remain accessible without a second navigation menu. */
+    private fun generalSettings() {
         val appearance = card()
         heading(appearance, "Iluminación ambiental")
         add(appearance, text("Luz neón suave detrás de las tarjetas. Se pausa al salir de la aplicación y respeta las animaciones desactivadas en Android.", 12, dim))
@@ -2042,6 +1988,73 @@ else->"Guardia cancelada"}}",
                     .show()
             },
         )
+    }
+
+    private fun settings() {
+        header("Equipos y ajustes", "PERSONALIZA MI TURNO")
+        if (second) {
+            val profile = card()
+            heading(profile, "Mi Perfil de Trabajo")
+            val te = arrayOf("A", "B", "C", "D")
+            add(
+                profile,
+                button("Equipo ${s.text("profileTeam","C")}", gold) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Equipo")
+                        .setItems(te) { _, i ->
+                            s.put("profileTeam", te[i])
+                            render()
+                        }
+                        .show()
+                },
+            )
+            add(
+                profile,
+                button("Turno ${s.text("shift","dia")}", gold) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Turno")
+                        .setItems(arrayOf("Día · 08–20", "Noche · 20–08")) { _, i ->
+                            s.put("shift", if (i == 0) "dia" else "noche")
+                            persist()
+                            render()
+                        }
+                        .show()
+                },
+            )
+            heading(profile, "Mostrar en el Calendario")
+            toggle(profile, "⭐ Resaltar descansos compartidos con el Equipo A", "stars")
+            toggle(profile, "🛡 Resaltar guardias de A en mis días de descanso", "guardsVisible")
+            heading(profile, "Mis Áreas (máximo 4)")
+            val areas = (1..4).associateWith { input(profile, "Área $it", s.text("area$it")) }
+            add(
+                profile,
+                button("Guardar áreas") {
+                    areas.forEach { (i, v) -> s.put("area$i", v.text.toString().trim()) }
+                    render()
+                    toast("Áreas guardadas")
+                },
+            )
+            add(
+                profile,
+                button(
+                    "Área activa: ${s.text("area"+s.text("activeArea","1")).ifEmpty{"Sin área"}}",
+                    gold,
+                ) {
+                    val values = (1..4).filter { s.text("area$it").isNotEmpty() }
+                    if (values.isEmpty()) toast("Escribe y guarda un área primero")
+                    else
+                        AlertDialog.Builder(this)
+                            .setTitle("Área activa")
+                            .setItems(values.map { s.text("area$it") }.toTypedArray()) { _, i ->
+                                s.put("activeArea", values[i].toString())
+                                render()
+                            }
+                            .show()
+                },
+            )
+        }
+        memberEditor()
+        generalSettings()
     }
 
     private fun holidays() {
