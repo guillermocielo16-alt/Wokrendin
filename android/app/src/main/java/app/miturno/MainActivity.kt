@@ -704,7 +704,7 @@ class MainActivity : Activity() {
             elevation = dp(15).toFloat()
         }
         val contentScroll = ScrollView(this).apply {
-            fillViewport = false
+            isFillViewport = false
             isVerticalScrollBarEnabled = true
             overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
         }
