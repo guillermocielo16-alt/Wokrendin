@@ -180,7 +180,7 @@ class MainActivity : Activity() {
             ),
         ).apply {
             cornerRadius = dp(10).toFloat()
-            setStroke(dp(if (active) 2 else 1), if (active) ink else tint(statusColor, if (dark) 100 else 175))
+            setStroke(dp(if (active) 2 else 1), if (active) gold else tint(statusColor, if (dark) 100 else 175))
         }
     }
 
