@@ -1585,8 +1585,8 @@ else->"Disponible"}else""}",
     private fun extras() {
         header("Horas Extra", "REGISTROS Y REPORTES")
         val total = card()
-        add(total, text("TOTAL ACUMULADO", 11, dim, monoFont))
-        add(total, text("${s.total()} horas", 34, accent("descanso"), titleFont))
+        add(total, text("TOTAL ACUMULADO", 11, dim, monoFont).apply { gravity = Gravity.CENTER })
+        add(total, text("${s.total()} hrs", 42, accent("descanso"), titleFont).apply { gravity = Gravity.CENTER })
         add(
             total,
             text(
