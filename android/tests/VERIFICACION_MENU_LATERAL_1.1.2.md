@@ -1,6 +1,6 @@
 # Pruebas de regresión — Menú lateral nativo 1.1.2
 
-Estado: **fuentes modificadas; pendiente compilación y pruebas físicas**. Aplicación: `app.miturno`. Versión prevista: 1.1.2 (versionCode 4).
+Estado: **APK 1.1.2 compilada; pruebas físicas pendientes**. Aplicación: `app.miturno`, versionCode 4. SHA-256: `80e1adddd81b09320459e29ef960554909f7e466aabcbcb0cb67102a79261d04`. Compilación, alineación y firma v2/v3 verificadas; certificado igual al de 1.1.1.
 
 ## Pruebas de interfaz y gestos en Android
 
@@ -32,4 +32,4 @@ Estado: **fuentes modificadas; pendiente compilación y pruebas físicas**. Apli
 
 ## Limitaciones de la revisión actual
 
-La comprobación del código fuente y los diffs **no sustituye una compilación con Android SDK** ni valida gestos/desenfoque en el teléfono. Confirmar todas las casillas después de compilar localmente y probar la APK 1.1.2 en Android.
+La compilación y las pruebas JVM **no sustituyen la validación física** de gestos, desenfoque y apariencia. Confirmar las casillas restantes al probar la APK 1.1.2 en Android.
