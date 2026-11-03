@@ -323,6 +323,7 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intent.getStringExtra("openDate")?.let {
+            if (drawerScreen != null) closeDrawer(immediate = true)
             openDateFromNotification(it)
             render()
         }
@@ -637,7 +638,9 @@ class MainActivity : Activity() {
         h.addView(close, LinearLayout.LayoutParams(dp(42), dp(42)))
         add(body, h)
         val divider = View(this).apply { setBackgroundColor(line) }
-        add(body, divider.apply { layoutParams = LinearLayout.LayoutParams(-1, dp(1)) })
+        body.addView(divider, LinearLayout.LayoutParams(-1, dp(1)).apply {
+            bottomMargin = dp(16)
+        })
     }
 
     private fun drawerMenuContents() {
@@ -708,7 +711,7 @@ class MainActivity : Activity() {
         val content = vertical().apply {
             setPadding(dp(18), dp(20), dp(18), dp(28))
         }
-        contentScroll.addView(content, ScrollView.LayoutParams(-1, -2))
+        contentScroll.addView(content, FrameLayout.LayoutParams(-1, -2))
         drawer.addView(contentScroll, FrameLayout.LayoutParams(-1, -1))
         shade.addView(drawer, FrameLayout.LayoutParams(widthPx, -1, Gravity.START))
         drawerHost.addView(shade, FrameLayout.LayoutParams(-1, -1))
@@ -1852,6 +1855,7 @@ else->"Guardia cancelada"}}",
             )
         }
         val reminders = card()
+        if (drawingInDrawer && drawerScreen == "reminders") drawerRemindersAnchor = reminders
         heading(reminders, "🔔 Recordatorio del próximo turno")
         add(
             reminders,
@@ -2012,6 +2016,7 @@ else->"Guardia cancelada"}}",
                     hasSelection = true
                     selected = d
                     month = d.withDayOfMonth(1)
+                    if (drawingInDrawer) closeDrawer(immediate = true)
                     page = "calendar"
                     render()
                 },
@@ -2126,10 +2131,14 @@ else->"Guardia cancelada"}}",
 
     @Deprecated("Legacy back navigation")
     override fun onBackPressed() {
-        if (page != "calendar") {
-            page = "calendar"
-            render(true)
-        } else super.onBackPressed()
+        when {
+            drawerScreen != null -> drawerBack()
+            page != "calendar" -> {
+                page = "calendar"
+                render(true)
+            }
+            else -> super.onBackPressed()
+        }
     }
 
     override fun onResume() {
@@ -2154,6 +2163,7 @@ else->"Guardia cancelada"}}",
     }
 
     override fun onDestroy() {
+        updateDrawerBackCallback(false)
         ambientBackdrop?.stop()
         deviceCalendarRequest++
         deviceCalendarWorker.shutdownNow()
