@@ -487,14 +487,13 @@ class MainActivity : Activity() {
         scroll.post { scroll.scrollTo(0, oldScroll) }
         if (drawerScreen != null) mountDrawer(animated = false, scrollTo = drawerPosition)
         else updateDrawerBackCallback(false)
-        if (animate) {
-            body.alpha = 0f
-            body.translationY = dp(7).toFloat()
-            body
-                .animate()
-                .alpha(1f)
+        // A whole-screen fade from alpha=0 exposes the wallpaper as a flash.
+        // Keep content opaque while using a short positional transition instead.
+        if (animate && android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            body.translationY = dp(3).toFloat()
+            body.animate()
                 .translationY(0f)
-                .setDuration(220)
+                .setDuration(140)
                 .setInterpolator(DecelerateInterpolator())
                 .start()
         }
