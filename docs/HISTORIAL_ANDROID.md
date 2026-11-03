@@ -1,6 +1,12 @@
 # Historial Android
 
-## 2026-11-02 — Revisión visual neón / WebView (fuentes 1.1.1, SIN APK)
+## 2026-11-03 — APK 1.1.1 compilada: ajustes visuales neón
+
+Compilada localmente la rama `android/kotlin`, commit `4ed366438a5cf77562bbed6614ad361c41c4537b`, con paridad visual y fondo neón ambiental lento. APK `Mi-Turno-Android-1.1.1.apk`, versionCode 3, paquete `app.miturno`, SHA-256 `3ec3b55bb046c9e25929d7a6828b6ce315ce589b1c91c4b81fa2eb2cc1e66d49`. Certificado SHA-256 coincide con la 1.1.0 (`41f530f81876173802f2156e29e105b9714c2ba9ef635a2195166b570800d8bc`); firma v2/v3 y alineación verificadas.
+
+Pasaron 23,013 comparaciones de reglas + 2 verificaciones de horas extra, 15 verificaciones de eventos/selección y 25 aserciones de almacenamiento/reportes. Los blobs Git de `CalendarRules.kt` y `Store.kt` permanecen sin cambios. Pruebas en dispositivo pendientes. APK y clave no se guardan en el repositorio. Sin GitHub Actions ni Netlify.
+
+## 2026-11-02 — Revisión visual neón / WebView (fuentes antes de compilar)
 
 Comparación con las capturas del usuario y CSS web v10: resplandor cálido/violeta/verde bajo tarjetas, franja horizontal compacta, botón principal verde con degradado y flechas pequeñas de navegación mensual. La web tiene radiales y sombras fijas; en Kotlin se añadieron radiales **animados lentamente** con `NeonAmbientDrawable.kt` como fondo de la ventana, sin mover contenido ni animar textos. Ciclo de 26 s, repintado limitado aproximadamente a 12 FPS, se pausa en `onPause` y se reanuda en `onResume`. Respeta las animaciones desactivadas por Android y permite apagarlo desde Ajustes.
 
@@ -10,7 +16,7 @@ Se recuperaron proporciones del carrusel web: ancho adaptable 52–67 dp, altura
 - Versión reservada **1.1.1 (versionCode 3)**; la APK 1.1.0 entregada previamente **NO** incluye estos ajustes.
 - Verificación estática: carga de archivos GitHub y presencia de métodos/recursos; sin instalación ni captura de la nueva versión.
 - `CalendarRules.kt` conserva SHA Git `75a84b35096aad361116c92de145c7bf5bcb40e6`; `Store.kt` conserva `adfe8a20c7a30def35c7bf7e5c1eebc92176985a`. No cambian anclas, horarios, festivos, guardias ni rotaciones.
-- Pendiente: compilación local con Android SDK y firma original privada; validar iluminación nocturna/diurna, consumo/batería, scroll horizontal, barra mensual, tema claro/oscuro, permisos y actualización sin borrar datos. No ejecutar GitHub Actions o Netlify.
+- La compilación se registró el 3 de noviembre de 2026 como APK 1.1.1. Pendiente validación visual y funcional en teléfono; no afirmar verificación física hasta realizarla. No ejecutar GitHub Actions o Netlify.
 
 
 
