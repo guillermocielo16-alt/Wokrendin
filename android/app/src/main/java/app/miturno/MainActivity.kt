@@ -1202,6 +1202,7 @@ class MainActivity : Activity() {
     private fun selectDate(d: LocalDate) {
         val previous = selected
         val priorMonth = month
+        val previouslySelected = hasSelection
         hasSelection = true
         selected = d
         month = d.withDayOfMonth(1)
@@ -1209,7 +1210,7 @@ class MainActivity : Activity() {
             render()
             return
         }
-        if (previous != d || priorMonth != month) {
+        if (!previouslySelected || previous != d || priorMonth != month) {
             headerDateLabel?.text =
                 (if (second) "CALENDARIO DE TRABAJO · " else "CICLO 28 DÍAS · ") + format(d)
             if (!second) {
