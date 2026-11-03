@@ -35,6 +35,8 @@ class MainActivity : Activity() {
     private var reportEnd = ""
     private var exportText = ""
     private var renderedToday = LocalDate.now()
+    private var ambientBackdrop: NeonAmbientDrawable? = null
+    private fun ambientEnabled() = s.text("ambientGlow", "on") != "off"
     private val clock = Handler(Looper.getMainLooper())
     private val refreshClock =
         object : Runnable {
@@ -155,6 +157,33 @@ class MainActivity : Activity() {
     private fun tint(c: Int, alpha: Int) =
         Color.argb(alpha, Color.red(c), Color.green(c), Color.blue(c))
 
+    private fun blend(from: Int, to: Int, amount: Float): Int {
+        val f = amount.coerceIn(0f, 1f)
+        return Color.rgb(
+            (Color.red(from) * (1f - f) + Color.red(to) * f).toInt(),
+            (Color.green(from) * (1f - f) + Color.green(to) * f).toInt(),
+            (Color.blue(from) * (1f - f) + Color.blue(to) * f).toInt(),
+        )
+    }
+
+    // The web version glows under translucent cards rather than placing light above text.
+    private fun cardSurface(): Int =
+        if (!dark) panel else Color.argb(222, Color.red(panel), Color.green(panel), Color.blue(panel))
+
+    private fun stripSurface(type: String, active: Boolean): GradientDrawable {
+        val statusColor = accent(type)
+        return GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(
+                if (dark) blend(panel, statusColor, 0.08f) else soft(type),
+                if (dark) blend(panel, statusColor, 0.27f) else blend(soft(type), statusColor, 0.13f),
+            ),
+        ).apply {
+            cornerRadius = dp(10).toFloat()
+            setStroke(dp(if (active) 2 else 1), if (active) ink else tint(statusColor, if (dark) 100 else 175))
+        }
+    }
+
     private fun shape(fill: Int, stroke: Int = line, radius: Int = 16) =
         GradientDrawable().apply {
             setColor(fill)
@@ -218,7 +247,7 @@ class MainActivity : Activity() {
     private fun card(parent: LinearLayout = body): LinearLayout =
         vertical().also {
             it.setPadding(dp(16), dp(14), dp(16), dp(14))
-            it.background = shape(panel)
+            it.background = shape(cardSurface(), if (dark) tint(ink, 20) else line)
             it.elevation = dp(1).toFloat()
             val p = LinearLayout.LayoutParams(-1, -2)
             p.bottomMargin = dp(16)
@@ -300,7 +329,17 @@ class MainActivity : Activity() {
             else android.R.style.Theme_Material_Light_NoActionBar
         )
         root = vertical()
-        root.setBackgroundColor(bg)
+        if (ambientEnabled()) {
+            val back = ambientBackdrop ?: NeonAmbientDrawable(bg, dark, second).also {
+                ambientBackdrop = it
+            }
+            back.configure(bg, dark, second)
+            root.background = back
+            back.start()
+        } else {
+            ambientBackdrop?.stop()
+            root.setBackgroundColor(bg)
+        }
         window.statusBarColor = bg
         window.navigationBarColor = panel
         window.decorView.systemUiVisibility =
@@ -341,8 +380,8 @@ class MainActivity : Activity() {
         }
         val bottom =
             row().apply {
-                setPadding(dp(12), dp(10), dp(12), dp(10))
-                background = shape(panel, line, 0)
+                setPadding(dp(14), dp(10), dp(14), dp(10))
+                background = shape(if (dark) tint(panel, 246) else panel, line, 0)
                 elevation = dp(8).toFloat()
             }
         val switch =
@@ -351,16 +390,39 @@ class MainActivity : Activity() {
                 page = "calendar"
                 persist()
                 render(true)
+            }.apply {
+                minHeight = dp(50)
+                textSize = 14f
+                val base = if (second) "#B68DC6" else "#22B782"
+                val highlight = if (second) "#E2AE9E" else "#27CCA0"
+                setTextColor(if (dark) color("#061C18") else color("#10251D"))
+                background = RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(tint(ink, 40)),
+                    GradientDrawable(
+                        GradientDrawable.Orientation.LEFT_RIGHT,
+                        intArrayOf(color(base), color(highlight)),
+                    ).apply { cornerRadius = dp(12).toFloat() },
+                    null,
+                )
             }
-        bottom.addView(switch, LinearLayout.LayoutParams(0, -2, 1f))
-        bottom.addView(
-            button(if (dark) "☀" else "☾", gold) {
-                dark = !dark
-                s.put("theme", if (dark) "dark" else "light")
-                render()
-            },
-            LinearLayout.LayoutParams(dp(52), -2),
-        )
+        bottom.addView(switch, LinearLayout.LayoutParams(0, -2, 1f).apply {
+            marginEnd = dp(9)
+        })
+        val themeButton = button(if (dark) "☀" else "☾", gold) {
+            dark = !dark
+            s.put("theme", if (dark) "dark" else "light")
+            render()
+        }.apply {
+            textSize = 22f
+            minHeight = dp(46)
+            setPadding(0, 0, 0, 0)
+            background = RippleDrawable(
+                android.content.res.ColorStateList.valueOf(tint(gold, 50)),
+                shape(if (dark) color("#16161D") else panel, tint(gold, 90), 99),
+                null,
+            )
+        }
+        bottom.addView(themeButton, LinearLayout.LayoutParams(dp(47), dp(47)))
         root.addView(bottom)
         scroll.post { scroll.scrollTo(0, oldScroll) }
         if (animate) {
@@ -613,8 +675,15 @@ class MainActivity : Activity() {
     }
 
     private fun strip() {
-        val h = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+        val h = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = true
+            isFillViewport = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
         val r = row()
+        // WebView used ~6.5 day chips per row, never four oversized cards.
+        val tileWidth = ((resources.displayMetrics.widthPixels / resources.displayMetrics.density - 32f) / 5.9f)
+            .toInt().coerceIn(52, 67)
         val today = LocalDate.now()
         val start = if (selected.isBefore(today) || selected.isAfter(today.plusDays(29)))
             selected.minusDays(3) else today
@@ -624,10 +693,16 @@ class MainActivity : Activity() {
             val c = accent(t)
             val col = vertical()
             col.gravity = Gravity.CENTER
-            col.setPadding(dp(8), dp(9), dp(8), dp(9))
-            col.background = shape(soft(t), if (d == selected) ink else tint(c, 90), 12)
-            col.addView(text(d.format(DateTimeFormatter.ofPattern("EEE", es)), 10, dim, monoFont))
-            col.addView(text("${d.dayOfMonth}", 23, c, monoFont))
+            col.setPadding(dp(3), dp(7), dp(3), dp(7))
+            col.background = stripSurface(t, d == selected)
+            col.addView(text(d.format(DateTimeFormatter.ofPattern("EEE", es)).uppercase(es), 10, dim, monoFont).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, 0, 0, 0)
+            })
+            col.addView(text("${d.dayOfMonth}", 16, c, titleFont).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, dp(3), 0, dp(3))
+            })
             if (deviceCalendarEvents[d]?.isNotEmpty() == true) {
                 col.addView(reminderBulb(13).apply {
                     contentDescription = "Recordatorios en ${d}"
@@ -645,10 +720,15 @@ class MainActivity : Activity() {
                     9,
                     c,
                     monoFont,
-                )
+                ).apply {
+                    gravity = Gravity.CENTER
+                    setPadding(0, 0, 0, 0)
+                }
             )
             col.setOnClickListener { selectDate(d) }
-            r.addView(col, LinearLayout.LayoutParams(dp(82), -2).apply { marginEnd = dp(8) })
+            col.isFocusable = true
+            col.contentDescription = "${format(d)}: ${CalendarRules.label(t)}"
+            r.addView(col, LinearLayout.LayoutParams(dp(tileWidth), dp(77)).apply { marginEnd = dp(6) })
         }
         h.addView(r)
         add(body, h)
