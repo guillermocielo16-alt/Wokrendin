@@ -27,6 +27,15 @@ class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private lateinit var body: LinearLayout
     private lateinit var scroll: ScrollView
+    private var heroSection: View? = null
+    private var monthSection: View? = null
+    private var monthGrid: CalendarGrid? = null
+    private var manageSection: View? = null
+    private var summarySection: View? = null
+    private var stripSection: HorizontalScrollView? = null
+    private var stripStartDate: LocalDate? = null
+    private var stripTiles = mutableMapOf<LocalDate, View>()
+    private var headerDateLabel: TextView? = null
     private lateinit var drawerHost: FrameLayout
     private var drawerOverlay: FrameLayout? = null
     private var drawerPanel: View? = null
@@ -356,6 +365,14 @@ class MainActivity : Activity() {
     private fun render(animate: Boolean = false) {
         val oldScroll = if (::scroll.isInitialized && !animate) scroll.scrollY else 0
         val drawerPosition = drawerScroll?.scrollY ?: drawerScrollOffset
+        heroSection = null
+        monthSection = null
+        monthGrid = null
+        manageSection = null
+        summarySection = null
+        stripSection = null
+        stripTiles.clear()
+        headerDateLabel = null
         drawerOverlay = null
         drawerPanel = null
         drawerScrim = null
@@ -395,8 +412,7 @@ class MainActivity : Activity() {
             drawerOverlay?.setPadding(0, drawerInsetTop, 0, drawerInsetBottom)
             insets
         }
-        setContentView(drawerHost)
-        drawerHost.requestApplyInsets()
+        // Build the entire next frame offscreen: never expose an empty Activity to the GPU.
         scroll =
             ScrollView(this).apply {
                 isFillViewport = true
@@ -465,6 +481,9 @@ class MainActivity : Activity() {
         }
         bottom.addView(themeButton, LinearLayout.LayoutParams(dp(47), dp(47)))
         root.addView(bottom)
+        // Atomic swap after calendar, cards and bottom controls are fully constructed.
+        setContentView(drawerHost)
+        drawerHost.requestApplyInsets()
         scroll.post { scroll.scrollTo(0, oldScroll) }
         if (drawerScreen != null) mountDrawer(animated = false, scrollTo = drawerPosition)
         else updateDrawerBackCallback(false)
@@ -712,7 +731,9 @@ class MainActivity : Activity() {
         val r = row()
         r.addView(drawerToggle(), LinearLayout.LayoutParams(dp(48), dp(48)))
         val col = vertical().apply { setPadding(dp(12), 0, 0, 0) }
-        add(col, text(sub, 10, dim, monoFont))
+        val subLabel = text(sub, 10, dim, monoFont)
+        if (page == "calendar" && !drawingInDrawer) headerDateLabel = subLabel
+        add(col, subLabel)
         add(col, text(title, if (second && page == "calendar") 19 else 22, ink, titleFont))
         r.addView(col, LinearLayout.LayoutParams(0, -2, 1f))
         if (page == "calendar" && !second && resources.configuration.screenWidthDp >= 400) {
@@ -803,6 +824,7 @@ class MainActivity : Activity() {
         val t = effective(d)
         val c = accent(t)
         val box = card()
+        if (!drawingInDrawer) heroSection = box
         box.setPadding(dp(26), dp(20), dp(20), dp(18))
         box.background =
             object : Drawable() {
@@ -911,7 +933,9 @@ class MainActivity : Activity() {
     }
 
     private fun strip() {
+        stripTiles = mutableMapOf()
         val h = HorizontalScrollView(this).apply {
+
             isHorizontalScrollBarEnabled = true
             isFillViewport = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -931,6 +955,7 @@ class MainActivity : Activity() {
             col.gravity = Gravity.CENTER
             col.setPadding(dp(3), dp(7), dp(3), dp(7))
             col.background = stripSurface(t, d == selected)
+            stripTiles[d] = col
             col.addView(text(d.format(DateTimeFormatter.ofPattern("EEE", es)).uppercase(es), 10, dim, monoFont).apply {
                 gravity = Gravity.CENTER
                 setPadding(0, 0, 0, 0)
@@ -973,6 +998,8 @@ class MainActivity : Activity() {
             r.addView(tile, LinearLayout.LayoutParams(dp(tileWidth), dp(72)).apply { marginEnd = dp(6) })
         }
         h.addView(r)
+        stripStartDate = start
+        stripSection = h
         add(body, h)
     }
 
@@ -1176,6 +1203,7 @@ class MainActivity : Activity() {
     private fun manage() {
         val guard = CalendarRules.status(selected, team) == "guardia"
         val p = card()
+        manageSection = p
         heading(p, if (guard) "🛡 Gestionar Guardia" else "🌴 Gestionar Vacaciones")
         add(p, text("${format(selected)} · Equipo $team", 12, dim))
         if (guard) {
@@ -1242,6 +1270,7 @@ class MainActivity : Activity() {
 
     private fun monthCard() {
         val p = card()
+        monthSection = p
         val nav = row()
         nav.addView(
             compactMonthControl("‹") {
@@ -1269,7 +1298,9 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(dp(34), dp(34)),
         )
         add(p, nav)
-        add(p, CalendarGrid())
+        val grid = CalendarGrid()
+        monthGrid = grid
+        add(p, grid)
         if (second) {
             add(p, text("● Trabajo    ● Descanso    🧊 No laborable\n⇄ Cambio    ◉ Hoy", 11, dim))
         } else {
@@ -1319,6 +1350,7 @@ class MainActivity : Activity() {
 
     private fun summary() {
         val p = card()
+        summarySection = p
         heading(p, "Personal del día")
         add(p, text(format(selected), 12, dim))
         for (t in listOf("dia", "noche", "guardia", "descanso", "vacaciones")) {
