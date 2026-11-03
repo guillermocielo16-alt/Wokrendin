@@ -28,7 +28,7 @@ cd android
 bash build-local.sh
 ```
 
-Salida: `android/build/Mi-Turno-Android-1.0.0.apk`. La versión es la de la base; antes de publicar una actualización funcional, incrementar versionCode/versionName tanto en Gradle como en el comando aapt2 del script y documentarlo.
+Salida: `android/build/Mi-Turno-Android-1.1.0.apk`. El script toma versionCode y versionName de Gradle y genera los IDs de los recursos dibujables antes de compilar Kotlin. Incrementar la versión en Gradle y documentarla al preparar una actualización.
 
 ## Reglas y reportes
 
@@ -47,7 +47,7 @@ Después de `build-local.sh`, con el mismo almacén de firma:
 
 ```bash
 bash tests/build-device.sh
-adb install -r build/Mi-Turno-Android-1.0.0.apk
+adb install -r build/Mi-Turno-Android-1.1.0.apk
 adb install -r build/tests.apk
 adb shell am instrument -w app.miturno.tests/app.miturno.tests.ValidationRunner
 ```

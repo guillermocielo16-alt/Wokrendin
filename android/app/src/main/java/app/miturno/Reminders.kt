@@ -66,7 +66,7 @@ object Reminders {
         val pending =
             PendingIntent.getActivity(
                 c,
-                0,
+                if (preview) 2 else 0,
                 Intent(c, MainActivity::class.java).apply {
                     putExtra("openDate", d.toString())
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -97,7 +97,7 @@ object Reminders {
             manager.getNotificationChannel("turnos")?.importance == NotificationManager.IMPORTANCE_NONE)
             return false
         return try {
-            manager.notify(1, n)
+            manager.notify(if (preview) 2 else 1, n)
             true
         } catch (_: SecurityException) { false }
     }
@@ -105,7 +105,7 @@ object Reminders {
 
 class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
-        Reminders.notify(c)
+        if (Store(c).text("remind") == "on") Reminders.notify(c)
         Reminders.schedule(c)
     }
 }

@@ -655,8 +655,11 @@ class MainActivity : Activity() {
     }
 
 
+    private fun reminderColor() = color(if (dark) "#FFC75B" else "#805400")
+
     private fun reminderBulb(size: Int) = ImageView(this).apply {
         setImageResource(R.drawable.ic_reminder_bulb)
+        setColorFilter(reminderColor())
         val px = dp(size)
         layoutParams = LinearLayout.LayoutParams(px, px)
         contentDescription = "Recordatorios"
@@ -671,9 +674,18 @@ class MainActivity : Activity() {
         add(controls, r)
         add(controls, text(deviceCalendarStatus, 11, dim))
         add(controls, button("Sincronizar calendario", gold) {
-            if (!deviceCalendar.hasPermission())
-                requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), 101)
-            else chooseDeviceCalendars()
+            if (deviceCalendar.hasPermission()) {
+                chooseDeviceCalendars()
+            } else {
+                AlertDialog.Builder(this)
+                    .setTitle("Leer calendarios de Android")
+                    .setMessage("Mi Turno mostrará las citas de los calendarios que elijas. Los detalles se mantienen en memoria durante esta sesión.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Continuar") { _, _ ->
+                        requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), 101)
+                    }
+                    .show()
+            }
         })
     }
 
@@ -690,7 +702,7 @@ class MainActivity : Activity() {
                         return@post
                     }
                     val names = choices.map { it.displayName }.toTypedArray()
-                    val chosen = chosenCalendarIds().toMutableSet()
+                    val chosen = chosenCalendarIds().intersect(choices.map { it.id }.toSet()).toMutableSet()
                     val checked = BooleanArray(choices.size) { choices[it].id in chosen }
                     AlertDialog.Builder(this)
                         .setTitle("Elegir calendarios para leer")
@@ -702,9 +714,7 @@ class MainActivity : Activity() {
                             if (chosen.isEmpty()) {
                                 toast("Selecciona al menos un calendario")
                             } else {
-                                // Only calendar IDs are persisted, outside the app's JSON backups.
-                                sourcesPrefs.edit().putString("selected_ids", chosen.sorted().joinToString(",")).apply()
-                                syncDeviceCalendars(chosen)
+                                syncDeviceCalendars(chosen.toSet())
                             }
                         }
                         .show()
@@ -723,14 +733,15 @@ class MainActivity : Activity() {
             today to today.plusDays(29),
             selected to selected,
         )
+        val zone = ZoneId.systemDefault()
         deviceCalendarStatus = "Sincronizando…"
         render()
         deviceCalendarWorker.execute {
             try {
                 val index = linkedMapOf<LocalDate, MutableList<DeviceCalendarEvent>>()
                 for ((from, through) in periods) {
-                    val events = deviceCalendar.readVisibleEvents(from, through, ids)
-                    for ((date, items) in ReminderDayIndex.build(events, from, through)) {
+                    val events = deviceCalendar.readVisibleEvents(from, through, ids, zone)
+                    for ((date, items) in ReminderDayIndex.build(events, from, through, zone)) {
                         index.getOrPut(date) { mutableListOf() }.addAll(items)
                     }
                 }
@@ -744,6 +755,10 @@ class MainActivity : Activity() {
                         deviceCalendarSynced = false
                         deviceCalendarStatus = "Permiso de calendario revocado"
                     } else {
+                        // Commit the selected sources and their results together.
+                        sourcesPrefs.edit()
+                            .putString("selected_ids", ids.sorted().joinToString(","))
+                            .apply()
                         deviceCalendarEvents = ready
                         deviceCalendarSynced = true
                         deviceCalendarStatus = "Sincronización completada · ${ready.values.sumOf { it.size }} recordatorios por fecha"
@@ -1068,6 +1083,7 @@ else->"Disponible"}else""}",
                 canvas.drawText(marks, x + cw / 2, y + dp(13), p)
                 if (deviceCalendarEvents[d]?.isNotEmpty() == true) {
                     val bulb = resources.getDrawable(R.drawable.ic_reminder_bulb, theme)
+                    bulb.setTint(reminderColor())
                     val size = dp(13)
                     bulb.setBounds(
                         (x + cw - size - dp(5)).toInt(),

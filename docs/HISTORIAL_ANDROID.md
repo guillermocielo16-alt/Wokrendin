@@ -1,5 +1,8 @@
 # Historial Android
 
+## 2026-11-02 — APK Android 1.1.0
+
+Compilación local de la integración Android Calendar y notificaciones basada en `b8ba18034e5fc83c9a02c862e48fabee671d8f74`. Se generaron IDs de recursos antes de compilar Kotlin, se adaptó el contraste del foquito y se corrigieron el manejo de errores del proveedor, la selección de fuentes y la separación de avisos de prueba. APK con firma original y código de versión 2. Las pruebas locales y el hash de entrega figuran en [ESTADO_ACTUAL.md](../android/ESTADO_ACTUAL.md). Validación física pendiente.
 
 ## 2026-11-02 — Integración de lectura Android Calendar y notificaciones (fuentes, pendiente APK)
 

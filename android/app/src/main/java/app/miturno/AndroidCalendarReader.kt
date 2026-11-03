@@ -30,13 +30,13 @@ class AndroidCalendarReader(private val context: Context) {
             CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,
         )
         val calendars = mutableListOf<CalendarChoice>()
-        resolver.query(
+        checkNotNull(resolver.query(
             CalendarContract.Calendars.CONTENT_URI,
             projection,
             "${CalendarContract.Calendars.VISIBLE} = 1",
             null,
             "${CalendarContract.Calendars.CALENDAR_DISPLAY_NAME} COLLATE NOCASE ASC",
-        )?.use { cursor ->
+        )) { "Calendar provider did not return a cursor" }.use { cursor ->
             val idCol = cursor.getColumnIndexOrThrow(CalendarContract.Calendars._ID)
             val nameCol = cursor.getColumnIndexOrThrow(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
             while (cursor.moveToNext()) {
@@ -91,7 +91,9 @@ class AndroidCalendarReader(private val context: Context) {
         val selection = "${CalendarContract.Instances.CALENDAR_ID} IN ($placeholders)"
         val args = chosen.map { it.id.toString() }.toTypedArray()
         val results = mutableListOf<DeviceCalendarEvent>()
-        resolver.query(uri, projection, selection, args, "${CalendarContract.Instances.BEGIN} ASC")?.use { cursor ->
+        checkNotNull(resolver.query(uri, projection, selection, args, "${CalendarContract.Instances.BEGIN} ASC")) {
+            "Calendar provider did not return an instances cursor"
+        }.use { cursor ->
             fun col(name: String) = cursor.getColumnIndexOrThrow(name)
             val eventIdCol = col(CalendarContract.Instances.EVENT_ID)
             val calendarIdCol = col(CalendarContract.Instances.CALENDAR_ID)
@@ -106,6 +108,7 @@ class AndroidCalendarReader(private val context: Context) {
                 if (!cursor.isNull(statusCol) &&
                     cursor.getInt(statusCol) == CalendarContract.Events.STATUS_CANCELED) continue
                 val calendarId = cursor.getLong(calendarIdCol)
+                if (calendarId !in names) continue
                 results.add(DeviceCalendarEvent(
                     eventId = cursor.getLong(eventIdCol),
                     startMillis = cursor.getLong(beginCol),
